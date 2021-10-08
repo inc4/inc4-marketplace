@@ -1,0 +1,49 @@
+@startuml
+
+Blockchain -> Marketplace : Token minted
+note over Marketplace: Save/update token
+
+...
+
+Marketplace -> Owner: Show all parsed tokens
+
+Marketplace <- Owner: Sell Token1 for Token2
+
+Marketplace <-> Owner: Check Token1 approve
+Owner -> Blockchain: Approve Token1 for marketplace
+
+Blockchain -> Marketplace: Token Appoved
+
+Marketplace -> Owner: Message to sign \n keccak256(token1, token2)
+Marketplace <- Owner: Signature
+
+note over Marketplace: Check sign \n Save offer
+
+...
+
+
+
+
+
+Marketplace -> Buyer: Show all offers
+Marketplace <- Buyer: Want to accept offer for Token1
+Marketplace <-> Buyer: Check Token2 approve (if non ETH pay)
+Marketplace -> Buyer: Contract call data
+Blockchain <- Buyer: acceptOffer(token1, token2, signature)
+
+...
+
+
+Blockchain -> Marketplace : Transfer
+note over Marketplace: Update tokens\n Set offers status to done
+
+
+
+
+
+
+
+
+
+@enduml
+

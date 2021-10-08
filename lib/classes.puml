@@ -1,0 +1,92 @@
+@startuml
+'https://plantuml.com/class-diagram
+
+
+enum TokenType {
+    ETH, ERC20,
+    ERC721, ERC1155
+}
+
+class TokenContract {
+    tokenType
+    contractAddress
+    name
+}
+
+class TokenData {
+    tokenContract
+    tokenId
+    owner
+    quantity
+}
+
+
+class TokenOrderData {
+    token: TokenData
+    quantity: bigint
+    --
+    startTime: number
+    endTime: number
+    --
+    toOrderData()
+}
+
+
+TokenOrderData --> OrderData
+
+TokenOrderData -* TokenData
+TokenData -* TokenContract
+TokenContract -* TokenType
+
+
+class Offer {
+    left: TokenOrderData
+    right: TokenOrderData
+    --
+    signature
+}
+
+note right
+contains both OrderData
+that sends to acceptOffer()
+endnote
+
+class Bid {
+    left: TokenOrderData
+    right: TokenOrderData
+    --
+    auction: Auction
+    --
+    signature
+}
+
+
+class Auction {
+    tokenData: TokenOrderData
+}
+
+
+Bid --* Auction : left ?
+Bid --* TokenOrderData : right
+
+Offer --* TokenOrderData : left, right
+
+Bid -|> Offer
+Auction -* TokenOrderData
+
+class OrderData {
+    tokenType
+    contractAddress
+    tokenId
+    userAddress
+    quantity
+    endtime
+}
+
+
+package SmartContract <<Cloud>> {
+circle "acceptOffer(OrderData left, OrderData right, string signature" as acceptOffer
+OrderData --> acceptOffer
+}
+
+@enduml
