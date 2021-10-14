@@ -35,6 +35,10 @@ contract marketplace {
 
 
     function acceptOffer(OrderData calldata left, OrderData calldata right, bytes memory signature) public payable {
+        require(left.endTime > block.timestamp, "Left order burn out");
+        require(right.endTime > block.timestamp, "Right order burn out");
+
+        // also check right.user == msg.sender here
         require(_recover(keccak256(abi.encodePacked(
                 left.tokenType, left.contractAddress, left.user, left.tokenId,left.quantity, left.endTime,
                 right.tokenType, right.contractAddress, msg.sender, right.tokenId, right.quantity, right.endTime

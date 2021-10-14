@@ -63,8 +63,8 @@ describe("Bdd", () => {
     expect(await mock20.balanceOf(owner)).eq(0);
     expect(await mock721.ownerOf(0)).eq(owner);
 
-    const sell = new TokenOrderData(token721, 10n, 0);
-    const buy = new TokenOrderData(token20, 20n, 0);
+    const sell = new TokenOrderData(token721, 10n, endtime(50));
+    const buy = new TokenOrderData(token20, 20n, endtime(50));
 
     const offer = await new Offer(buy, sell).sign(userS);
 
@@ -93,4 +93,32 @@ describe("Bdd", () => {
 
   });
 
+
+
+  it('endtime', async () => {
+
+    await mock721.mint(owner);
+    await mock20.mint(user, 20);
+
+    const el = new EventLogger(marketplace);
+    await el.events()
+
+    const [token721, token20] = Object.values(marketplace.db.tokens);
+    // owner of 721 = owner;   owner of 20 = user
+
+    const sell = new TokenOrderData(token721, 10n, endtime(0));
+    const buy = new TokenOrderData(token20, 20n, endtime(50));
+    await mock721.approve(marketplace.contract.address, 0);
+    await mock20.connect(userS).approve(marketplace.contract.address, 20)
+
+    const offer = await new Offer(buy, sell).sign(userS);
+    await marketplace.makeOffer(offer)
+
+    await expect(marketplace.contract.acceptOffer(offer.left.toOrderData(), offer.right.toOrderData(), offer.signature)).to.be.rejectedWith("Right order burn out");
+
+
+  });
+
 });
+
+const endtime = (d: number) => {return Math.round(Date.now()/1000) + d}
