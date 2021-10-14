@@ -1,11 +1,14 @@
 import {deployments, ethers, getNamedAccounts} from "hardhat";
 import type {Contract, Signer} from "ethers";
 import chai from "chai";
-import {Offer, TokenContract, TokenData, TokenOrderData, TokenType} from "../lib/types";
+import {Offer, TokenContract, TokenOrderData, TokenType} from "../lib/types";
 import {DatabaseMock} from "../lib/db_mock";
 import {Marketplace} from "../lib/marketplace";
+import {EventLogger} from "../lib/event_logger";
+import chaiAsPromised from "chai-as-promised";
 
 chai.should();
+chai.use(chaiAsPromised);
 const expect = chai.expect;
 
 
@@ -42,33 +45,42 @@ describe("Bdd", () => {
 
   beforeEach(async () => {
     await deployments.fixture(["mocks", "marketplace"]); // reset contracts state
-
-    await mock721.mint(owner);
-    await mock721.approve(marketplace.contract.address, 0);
-    mock20.mint(user, 20);
-    mock20.connect(userS).approve(marketplace.contract.address, 20)
   });
 
 
-
-
   it('offer', async () => {
+
+    await mock721.mint(owner);
+    await mock20.mint(user, 20);
+
+    const el = new EventLogger(marketplace);
+    await el.events()
+
+    const [token721, token20] = Object.values(marketplace.db.tokens);
+    // owner of 721 = owner;   owner of 20 = user
 
     expect(await mock20.balanceOf(user)).eq(20);
     expect(await mock20.balanceOf(owner)).eq(0);
     expect(await mock721.ownerOf(0)).eq(owner);
 
-    const sellToken = new TokenData(TC721, 0n, owner, 100n);
-    const buyToken = new TokenData(TC20, 0n, user, 200n);
-
-    const sell = new TokenOrderData(sellToken, 10n, 0);
-    const buy = new TokenOrderData(buyToken, 20n, 0);
+    const sell = new TokenOrderData(token721, 10n, 0);
+    const buy = new TokenOrderData(token20, 20n, 0);
 
     const offer = await new Offer(buy, sell).sign(userS);
-    const offerId = await marketplace.makeOffer(offer)
-    const offer2 = marketplace.getOffer(offerId);
 
+    await marketplace.makeOffer(offer).should.be.rejected;
+    await mock721.approve(marketplace.contract.address, 0);
+    await mock20.connect(userS).approve(marketplace.contract.address, 20)
+
+
+    const offerId = await marketplace.makeOffer(offer)
+
+    const offer2 = marketplace.getOffer(offerId);
     expect(offer).to.eq(offer2)
+
+
+    // frontend will check it before transaction
+    await marketplace.checkApprove(offer.right);
 
     await marketplace.contract.acceptOffer(offer.left.toOrderData(), offer.right.toOrderData(), offer.signature);
 
@@ -76,31 +88,8 @@ describe("Bdd", () => {
     expect(await mock20.balanceOf(owner)).eq(20);
     expect(await mock721.ownerOf(0)).eq(user);
 
-  });
+    // todo update tokens in db; check db
 
-  it('sell', async () => {
-
-    expect(await mock20.balanceOf(user)).eq(20);
-    expect(await mock20.balanceOf(owner)).eq(0);
-    expect(await mock721.ownerOf(0)).eq(owner);
-
-    const sellToken = new TokenData(TC721, 0n, owner, 100n);
-    const buyToken = new TokenData(TC20, 0n, user, 200n);
-
-    const sell = new TokenOrderData(sellToken, 10n, 0);
-    const buy = new TokenOrderData(buyToken, 20n, 0);
-
-    const offer = await (new Offer(sell, buy)).sign(ownerS);
-    const offerId = await marketplace.makeOffer(offer)
-    const offer2 = marketplace.getOffer(offerId);
-
-    expect(offer).to.eq(offer2)
-
-    await marketplace.contract.connect(userS).acceptOffer(offer.left.toOrderData(), offer.right.toOrderData(), offer.signature);
-
-    expect(await mock20.balanceOf(user)).eq(0);
-    expect(await mock20.balanceOf(owner)).eq(20);
-    expect(await mock721.ownerOf(0)).eq(user);
 
   });
 

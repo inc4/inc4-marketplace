@@ -9,6 +9,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "hardhat/console.sol";
 
 
+// todo transfer interface for all supported erc
+
 contract marketplace {
     address immutable backend;
 
@@ -43,22 +45,6 @@ contract marketplace {
 
     }
 
-
-    // todo move to backend
-//    function checkApprove(OrderData calldata data) public view returns (bool) {
-//        if (data.tokenType == TokenType.ERC20) {
-//            return IERC20(data.contractAddress).allowance(data.owner, data.seller) > data.quantity;
-//        }
-//        else if (data.tokenType == TokenType.ERC721) {
-//            return IERC721(data.contractAddress).getApproved(data.tokenId) == address(this);  // todo maybe for all...
-//        }
-//        else if (data.tokenType == TokenType.ERC1155) {
-//            return IERC1155(data.contractAddress).isApprovedForAll(data.seller, address(this));
-//        }
-//        revert("Wrong tokenType");
-//    }
-
-
     function _transfer(OrderData calldata sender, address receiver) internal {
         if (sender.tokenType == TokenType.ETH) {
             require(msg.value == sender.quantity, "Wrong eth value");
@@ -76,7 +62,7 @@ contract marketplace {
     }
 
 
-    function _recover(bytes32 message, bytes memory signature) internal view returns (address) {
+    function _recover(bytes32 message, bytes memory signature) internal pure returns (address) {
         bytes32 r;
         bytes32 s;
         uint8 v;

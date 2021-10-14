@@ -1,4 +1,3 @@
-import {TransactionRequest} from "@ethersproject/abstract-provider/src.ts/index";
 import {ethers} from "hardhat";
 import {Signer} from "ethers";
 
@@ -15,7 +14,7 @@ export class TokenContract {
   address: string
   name: string
 
-  constructor(tokenType: number, address: string, name: string) {
+  constructor(tokenType: TokenType, address: string, name: string) {
     this.tokenType = tokenType;
     this.address = address;
     this.name = name;
@@ -32,6 +31,7 @@ export class TokenData {
   constructor(tokenContract: TokenContract, tokenId: bigint, owner: string, quantity: bigint) {
     // todo checks
     // erc721 quantity == 1
+    // erc20 tokenId == 0
     // eth tokenContract, tokenId == 0
 
     this.tokenContract = tokenContract;
@@ -39,6 +39,10 @@ export class TokenData {
     this.owner = owner;
     this.quantity = quantity;
 
+  }
+
+  static id(contract: string, tokenId: bigint): string {
+    return `${contract}_${tokenId}`
   }
 
 }
@@ -129,10 +133,6 @@ export class Bid extends Offer {
 }
 
 
-
-
-
-
 export class OrderData {
   tokenType: number
   contractAddress: string
@@ -158,15 +158,3 @@ export class OrderData {
     );
   }
 }
-
-//
-//
-// export interface IDataBase {
-//   createToken(data: TokenData): string
-//   getToken(tid: string): TokenData;
-//
-//   createOffer(offer: Offer): number
-//   getOffer(offerId: number): Offer
-//   removeOffer(offerId: number): void
-// }
-//
