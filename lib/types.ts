@@ -15,6 +15,7 @@ type OrderPartSol = {
 type OrderSol = {
   left: OrderPartSol,
   right: OrderPartSol,
+  nonce: bigint,
   sig: {
     r: string
     s: string
@@ -116,11 +117,13 @@ export class Offer {
   left: OrderPart
   right: OrderPart
 
+  nonce: bigint
   signature: string | null = null;
 
   constructor(first: OrderPart, second: OrderPart) {
     this.left = first;
     this.right = second;
+    this.nonce = this.someCryptorandom();
   }
 
   async sign(signer: Signer) {
@@ -133,13 +136,15 @@ export class Offer {
     return {
       left: this.left.toOrderPart(),
       right: this.right.toOrderPart(),
+      nonce: this.nonce,
       sig: {r, s, v},
     };
   }
 
   toMessage() {
-    const messages = [this.left, this.right].map(i => i.pack());
-    return ethers.utils.arrayify(ethers.utils.keccak256(ethers.utils.hexConcat(messages)))
+    const messageParts = [this.left, this.right].map(i => i.pack());
+    messageParts.push(ethers.utils.solidityPack(['uint256'], [this.nonce]))
+    return ethers.utils.arrayify(ethers.utils.keccak256(ethers.utils.hexConcat(messageParts)))
   }
 
   checkSign(): boolean {
@@ -149,6 +154,9 @@ export class Offer {
     return signer == this.left.token.owner
   }
 
+  private someCryptorandom() {
+    return 42n;  // todo
+  }
 }
 
 export class Auction {

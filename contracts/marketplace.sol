@@ -50,6 +50,7 @@ contract marketplace {
     struct Order {
         OrderPart left;
         OrderPart right;
+        uint256 nonce;
         Sig sig;
     }
 
@@ -93,7 +94,8 @@ contract marketplace {
         // also check right.user == msg.sender here
         bytes32 message = keccak256(abi.encodePacked(
                 o.left.tokenType, o.left.contractAddress, o.left.user, o.left.tokenId, o.left.quantity, o.left.endTime,
-                o.right.tokenType, o.right.contractAddress, msg.sender, o.right.tokenId, o.right.quantity, o.right.endTime
+                o.right.tokenType, o.right.contractAddress, msg.sender, o.right.tokenId, o.right.quantity, o.right.endTime,
+                o.nonce
             ));
         require(cancelledOrFinalized[message] == false, "Already filled");
 
