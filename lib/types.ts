@@ -62,9 +62,9 @@ export class TokenOrderData {
     this.endTime = endTime;
   }
 
-  toOrderData(): OrderData {
+  toOrderPart(): OrderPart {
     const c = this.token.tokenContract;
-    return new OrderData(c.tokenType, c.address, this.token.owner, this.token.tokenId, this.quantity, this.endTime)
+    return new OrderPart(c.tokenType, c.address, this.token.owner, this.token.tokenId, this.quantity, this.endTime)
   }
 
 }
@@ -92,8 +92,17 @@ export class Offer {
     return this;
   }
 
+  toCallData() {
+    const {r, s, v} = ethers.utils.splitSignature(ethers.utils.arrayify(this.signature ?? ""))
+    return {
+      left: this.left.toOrderPart(),
+      right: this.right.toOrderPart(),
+      sig: {r, s, v},
+    };
+  }
+
   toMessage() {
-    const messages = [this.left, this.right].map(i => i.toOrderData().pack());
+    const messages = [this.left, this.right].map(i => i.toOrderPart().pack());
     return ethers.utils.arrayify(ethers.utils.keccak256(ethers.utils.hexConcat(messages)))
   }
 
@@ -133,7 +142,8 @@ export class Bid extends Offer {
 }
 
 
-export class OrderData {
+// type for use in smart contracts
+export class OrderPart {
   tokenType: number
   contractAddress: string
   user: string

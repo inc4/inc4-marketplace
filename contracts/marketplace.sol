@@ -9,15 +9,51 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "hardhat/console.sol";
 
 
-// todo transfer interface for all supported erc
+// todo do we need ERC1155 safeBatchTransferFrom on acceptOffer?
+
+
+// todo transfer interface for all supported erc (instead of 3 imports of openzeppelin, save some deploy gas)
+
+//interface IERC420 {
+//    // erc20
+//    function transferFrom(
+//        address sender,
+//        address recipient,
+//        uint256 amount
+//    ) external returns (bool);
+//
+//    // erc721
+//    function safeTransferFrom(
+//        address from,
+//        address to,
+//        uint256 tokenId
+//    ) external;
+//
+//    // erc1155
+//    function safeTransferFrom(
+//        address from,
+//        address to,
+//        uint256 id,
+//        uint256 amount,
+//        bytes calldata data
+//    ) external;
+//}
+//
 
 contract marketplace {
+    event Transfer(address tokenContractAddress, uint256 tokenId, uint256 quantity, address from, address to);
+
     address immutable backend;
+    mapping(bytes32 => bool) cancelledOrFinalized;  // todo add nonce to Offer. (otherwise transaction like this banned forever)
 
     enum TokenType {ETH, ERC20, ERC721, ERC1155}
+    struct Offer {
+        OrderPart left;
+        OrderPart right;
+        Sig sig;
+    }
 
-
-    struct OrderData {
+    struct OrderPart {
         TokenType tokenType;
         address contractAddress;
         address user;
@@ -26,7 +62,12 @@ contract marketplace {
         uint256 endTime;
     }
 
-    event Transfer(address tokenContractAddress, uint256 tokenId, uint256 quantity, address from, address to);
+    struct Sig {
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+    }
+
 
 
     constructor(address backend_)  {
@@ -34,22 +75,35 @@ contract marketplace {
     }
 
 
-    function acceptOffer(OrderData calldata left, OrderData calldata right, bytes memory signature) public payable {
-        require(left.endTime > block.timestamp, "Left order burn out");
-        require(right.endTime > block.timestamp, "Right order burn out");
-
-        // also check right.user == msg.sender here
-        require(_recover(keccak256(abi.encodePacked(
-                left.tokenType, left.contractAddress, left.user, left.tokenId,left.quantity, left.endTime,
-                right.tokenType, right.contractAddress, msg.sender, right.tokenId, right.quantity, right.endTime
-            )), signature) == left.user, "Fail to verify");
-
-        _transfer(left, right.user);
-        _transfer(right, left.user);
-
+    function acceptOffer(Offer calldata o) public payable {
+        _markFinalized(o);
+        _transfer(o.left, o.right.user);
+        _transfer(o.right, o.left.user);
     }
 
-    function _transfer(OrderData calldata sender, address receiver) internal {
+    function cancelOffer(Offer calldata o) public {
+        _markFinalized(o);
+    }
+
+
+    function _markFinalized(Offer calldata o) internal {
+        require(o.left.endTime > block.timestamp, "Left order burn out");
+        require(o.right.endTime > block.timestamp, "Right order burn out");
+
+        // also check right.user == msg.sender here
+        bytes32 message = keccak256(abi.encodePacked(
+                o.left.tokenType, o.left.contractAddress, o.left.user, o.left.tokenId, o.left.quantity, o.left.endTime,
+                o.right.tokenType, o.right.contractAddress, msg.sender, o.right.tokenId, o.right.quantity, o.right.endTime
+            ));
+        require(cancelledOrFinalized[message] == false, "Already filled");
+
+        require(_recover(message, o.sig) == o.left.user, "Fail to verify");
+
+
+        cancelledOrFinalized[message] = true;
+    }
+
+    function _transfer(OrderPart calldata sender, address receiver) internal {
         if (sender.tokenType == TokenType.ETH) {
             require(msg.value == sender.quantity, "Wrong eth value");
             payable(receiver).transfer(sender.quantity);
@@ -66,18 +120,11 @@ contract marketplace {
     }
 
 
-    function _recover(bytes32 message, bytes memory signature) internal pure returns (address) {
-        bytes32 r;
-        bytes32 s;
-        uint8 v;
-        assembly {
-            r := mload(add(signature, 32))
-            s := mload(add(signature, 64))
-            v := byte(0, mload(add(signature, 96)))
-        }
+    function _recover(bytes32 message, Sig calldata sig) internal pure returns (address) {
         return ecrecover(
-            keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", message
-            )), v, r, s);
+            keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", message)),
+            sig.v, sig.r, sig.s
+        );
     }
 
 }

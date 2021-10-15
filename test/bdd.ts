@@ -82,7 +82,7 @@ describe("Bdd", () => {
     // frontend will check it before transaction
     await marketplace.checkApprove(offer.right);
 
-    await marketplace.contract.acceptOffer(offer.left.toOrderData(), offer.right.toOrderData(), offer.signature);
+    await marketplace.contract.acceptOffer(offer.toCallData());
 
     expect(await mock20.balanceOf(user)).eq(0);
     expect(await mock20.balanceOf(owner)).eq(20);
@@ -114,7 +114,7 @@ describe("Bdd", () => {
     const offer = await new Offer(buy, sell).sign(userS);
     await marketplace.makeOffer(offer)
 
-    await expect(marketplace.contract.acceptOffer(offer.left.toOrderData(), offer.right.toOrderData(), offer.signature)).to.be.rejectedWith("Right order burn out");
+    await expect(marketplace.contract.acceptOffer(offer.toCallData())).to.be.rejectedWith("Right order burn out");
 
 
   });
