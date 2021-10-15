@@ -2,6 +2,27 @@ import {ethers} from "hardhat";
 import {Signer} from "ethers";
 
 
+type OrderPartSol = {
+  tokenType: number
+  contractAddress: string
+  user: string
+  tokenId: bigint;
+  quantity: bigint;
+  endTime: number;
+}
+
+
+type OrderSol = {
+  left: OrderPartSol,
+  right: OrderPartSol,
+  sig: {
+    r: string
+    s: string
+    v: number
+  }
+}
+
+
 export enum TokenType {
   ETH,
   ERC20,
@@ -47,7 +68,7 @@ export class TokenData {
 
 }
 
-export class TokenOrderData {
+export class OrderPart {
   token: TokenData
   quantity: bigint
 
@@ -62,10 +83,25 @@ export class TokenOrderData {
     this.endTime = endTime;
   }
 
-  toOrderPart(): OrderPart {
-    const c = this.token.tokenContract;
-    return new OrderPart(c.tokenType, c.address, this.token.owner, this.token.tokenId, this.quantity, this.endTime)
+  toOrderPart(): OrderPartSol {
+    return {
+      tokenType: this.token.tokenContract.tokenType,
+      contractAddress: this.token.tokenContract.address,
+      user: this.token.owner,
+      tokenId: this.token.tokenId,
+      quantity: this.quantity,
+      endTime: this.endTime
+    };
   }
+
+  pack(): string {
+    return ethers.utils.solidityPack(
+      ['uint8', 'address', 'address', 'uint256', 'uint256', 'uint256'],
+      [this.token.tokenContract.tokenType, this.token.tokenContract.address,
+        this.token.owner, this.token.tokenId, this.quantity, this.endTime]
+    );
+  }
+
 
 }
 
@@ -77,12 +113,12 @@ export class Offer {
   // left order token must be approved (eth not working)
 
 
-  left: TokenOrderData
-  right: TokenOrderData
+  left: OrderPart
+  right: OrderPart
 
   signature: string | null = null;
 
-  constructor(first: TokenOrderData, second: TokenOrderData) {
+  constructor(first: OrderPart, second: OrderPart) {
     this.left = first;
     this.right = second;
   }
@@ -92,7 +128,7 @@ export class Offer {
     return this;
   }
 
-  toCallData() {
+  toCallData(): OrderSol {
     const {r, s, v} = ethers.utils.splitSignature(ethers.utils.arrayify(this.signature ?? ""))
     return {
       left: this.left.toOrderPart(),
@@ -102,7 +138,7 @@ export class Offer {
   }
 
   toMessage() {
-    const messages = [this.left, this.right].map(i => i.toOrderPart().pack());
+    const messages = [this.left, this.right].map(i => i.pack());
     return ethers.utils.arrayify(ethers.utils.keccak256(ethers.utils.hexConcat(messages)))
   }
 
@@ -116,13 +152,13 @@ export class Offer {
 }
 
 export class Auction {
-  tokenData: TokenOrderData
+  tokenData: OrderPart
   minPrice: number;
 
   starttime: number
 
 
-  constructor(tokenData: TokenOrderData, minPrice: number) {
+  constructor(tokenData: OrderPart, minPrice: number) {
     this.tokenData = tokenData;
     this.minPrice = minPrice;
     this.starttime = 0;
@@ -134,37 +170,9 @@ export class Bid extends Offer {
   auction: Auction;
 
 
-  constructor(bid: TokenOrderData, auction: Auction) {
+  constructor(bid: OrderPart, auction: Auction) {
     super(bid, auction.tokenData);
     this.auction = auction;
   }
 
-}
-
-
-// type for use in smart contracts
-export class OrderPart {
-  tokenType: number
-  contractAddress: string
-  user: string
-  tokenId: bigint;
-  quantity: bigint;
-  endTime: number;
-
-
-  constructor(tokenType: number, contractAddress: string, user: string, tokenId: bigint, quantity: bigint, endTime: number) {
-    this.tokenType = tokenType;
-    this.contractAddress = contractAddress;
-    this.user = user;
-    this.tokenId = tokenId;
-    this.quantity = quantity;
-    this.endTime = endTime;
-  }
-
-  pack(): string {
-    return ethers.utils.solidityPack(
-      ['uint8', 'address', 'address', 'uint256', 'uint256', 'uint256'],
-      [this.tokenType, this.contractAddress, this.user, this.tokenId, this.quantity, this.endTime]
-    );
-  }
 }

@@ -1,5 +1,5 @@
 import {Contract} from "ethers";
-import {Offer, TokenOrderData, TokenType} from "./types";
+import {Offer, OrderPart, TokenType} from "./types";
 import {DatabaseMock} from "./db_mock";
 import {ethers} from "hardhat";
 import abi from "./abi.json";
@@ -28,7 +28,7 @@ export class Marketplace {
   }
 
 
-  async checkApprove(data: TokenOrderData): Promise<boolean> {
+  async checkApprove(data: OrderPart): Promise<boolean> {
     const tokenType = data.token.tokenContract.tokenType
     const contract = await this.getContract(data.token.tokenContract.address);
 

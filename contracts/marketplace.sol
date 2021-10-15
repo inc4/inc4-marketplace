@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "hardhat/console.sol";
 
 
-// todo do we need ERC1155 safeBatchTransferFrom on acceptOffer?
+// todo do we need ERC1155 safeBatchTransferFrom on acceptOrder?
 
 
 // todo transfer interface for all supported erc (instead of 3 imports of openzeppelin, save some deploy gas)
@@ -44,10 +44,10 @@ contract marketplace {
     event Transfer(address tokenContractAddress, uint256 tokenId, uint256 quantity, address from, address to);
 
     address immutable backend;
-    mapping(bytes32 => bool) cancelledOrFinalized;  // todo add nonce to Offer. (otherwise transaction like this banned forever)
+    mapping(bytes32 => bool) cancelledOrFinalized;  // todo add nonce to Order. (otherwise transaction like this banned forever)
 
     enum TokenType {ETH, ERC20, ERC721, ERC1155}
-    struct Offer {
+    struct Order {
         OrderPart left;
         OrderPart right;
         Sig sig;
@@ -75,18 +75,18 @@ contract marketplace {
     }
 
 
-    function acceptOffer(Offer calldata o) public payable {
+    function acceptOrder(Order calldata o) public payable {
         _markFinalized(o);
         _transfer(o.left, o.right.user);
         _transfer(o.right, o.left.user);
     }
 
-    function cancelOffer(Offer calldata o) public {
+    function cancelOrder(Order calldata o) public {
         _markFinalized(o);
     }
 
 
-    function _markFinalized(Offer calldata o) internal {
+    function _markFinalized(Order calldata o) internal {
         require(o.left.endTime > block.timestamp, "Left order burn out");
         require(o.right.endTime > block.timestamp, "Right order burn out");
 
