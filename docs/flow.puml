@@ -29,7 +29,7 @@ Marketplace -> Buyer: Show all offers
 Marketplace <- Buyer: Want to accept offer for Token1
 Marketplace <-> Buyer: Check Token2 approve (if non ETH pay)
 Marketplace -> Buyer: Contract call data
-Blockchain <- Buyer: acceptOffer(token1, token2, signature)
+Blockchain <- Buyer: acceptOffer(offer)
 
 ...
 

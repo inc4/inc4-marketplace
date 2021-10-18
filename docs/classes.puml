@@ -21,72 +21,63 @@ class TokenData {
 }
 
 
-class TokenOrderData {
+class OrderPart {
     token: TokenData
     quantity: bigint
     --
     startTime: number
     endTime: number
-    --
-    toOrderData()
 }
 
 
-TokenOrderData --> OrderData
 
-TokenOrderData -* TokenData
+OrderPart -* TokenData
 TokenData -* TokenContract
 TokenContract -* TokenType
 
 
 class Offer {
-    left: TokenOrderData
-    right: TokenOrderData
+    left: OrderPart
+    right: OrderPart
     --
+    nonce
     signature
+    --
+    toCallData()
+    toMessage()
 }
 
-note right
-contains both OrderData
-that sends to acceptOffer()
-endnote
+
 
 class Bid {
-    left: TokenOrderData
-    right: TokenOrderData
+    left: OrderPart
+    right: OrderPart
     --
     auction: Auction
     --
+    nonce
     signature
 }
 
 
 class Auction {
-    tokenData: TokenOrderData
+    tokenData: OrderPart
+    --
+    minPrice
 }
 
 
 Bid --* Auction : left ?
-Bid --* TokenOrderData : right
+Bid --* OrderPart : right
 
-Offer --* TokenOrderData : left, right
+Offer --* OrderPart : left, right
 
 Bid -|> Offer
-Auction -* TokenOrderData
+Auction -* OrderPart
 
-class OrderData {
-    tokenType
-    contractAddress
-    tokenId
-    userAddress
-    quantity
-    endtime
-}
-
-
-package SmartContract <<Cloud>> {
-circle "acceptOffer(OrderData left, OrderData right, string signature" as acceptOffer
-OrderData --> acceptOffer
+package "SmartContract" <<Cloud>> {
+circle " " as acceptOffer
+Offer -> acceptOffer: "output from `toCallData()` sends to              \n acceptOffer(offer)"
 }
 
 @enduml
