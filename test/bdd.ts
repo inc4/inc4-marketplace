@@ -45,6 +45,7 @@ describe("Bdd", () => {
 
   beforeEach(async () => {
     await deployments.fixture(["mocks", "marketplace"]); // reset contracts state
+    marketplace.contract.provider.removeAllListeners()
   });
 
 
@@ -89,6 +90,8 @@ describe("Bdd", () => {
     expect(await mock721.ownerOf(0)).eq(user);
 
     // todo update tokens in db; check db
+    await new Promise((r) => {setTimeout(r, 5000)})
+
 
 
   });

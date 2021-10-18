@@ -22,15 +22,15 @@ export class EventLogger {
     this.m = marketplace;
   }
 
-
   async events() {
 
     const events = [
       // erc20 and erc721
-      // note:  erc20  3th arg is quantity
-      //        erc721 3th arg is tokenId
       new Event('Transfer', ['address', 'address', 'uint256'], async (log, a) => {
-        await this.onTransfer(log, a[0], a[1], a[2].toBigInt(), a[2].toBigInt());
+        if (log.topics.length == 3) // erc20
+          await this.onTransfer(log, a[0], a[1], 0n, a[2].toBigInt());
+        else // erc721
+          await this.onTransfer(log, a[0], a[1], a[2].toBigInt(), 1n);
       }),
 
       // erc1155
@@ -49,20 +49,22 @@ export class EventLogger {
     ]
 
     for (let e of events) {
+      // old
       const logs = await this.m.contract.provider.getLogs({
-        fromBlock: 'earliest',
+        fromBlock: 'earliest',  // todo last processed block
         topics: [e.encode()]
       });
-      for (let l of logs)
-        await e.onEvent(l)
+      for (let l of logs) await e.onEvent(l)
+
+      // new
+      this.m.contract.provider.on([e.encode()], l => e.onEvent(l))  // this == undefined without explicit lambda
+
     }
 
   }
 
   async onTransfer(log: Log, from: string, to: string, tokenId: bigint, value: bigint) {
     const contract = await this.updateContract(log.address)
-    if (contract.tokenType == TokenType.ERC20) tokenId = 0n;
-    if (contract.tokenType == TokenType.ERC721) value = 1n;
 
     this.updateToken(contract, from, tokenId, value);
     this.updateToken(contract, to, tokenId, value);
