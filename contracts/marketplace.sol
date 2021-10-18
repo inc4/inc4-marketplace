@@ -11,7 +11,6 @@ import "hardhat/console.sol";
 
 // todo do we need ERC1155 safeBatchTransferFrom on acceptOrder?
 
-
 // todo transfer interface for all supported erc (instead of 3 imports of openzeppelin, save some deploy gas)
 
 //interface IERC420 {
@@ -44,7 +43,11 @@ contract marketplace {
     event Transfer(address tokenContractAddress, uint256 tokenId, uint256 quantity, address from, address to);
 
     address immutable backend;
-    mapping(bytes32 => bool) cancelledOrFinalized;  // todo add nonce to Order. (otherwise transaction like this banned forever)
+    mapping(bytes32 => bool) cancelledOrFinalized;
+
+    // actualPrice = price * fee_reverse / 1e10    => floor pay to user
+    // fee_to_marketplace = price - actualPrice    => ceil fee
+    uint256 constant fee_reverse = (100 - 2.5) * 1e10;  // 2.5% fee
 
     enum TokenType {ETH, ERC20, ERC721, ERC1155}
     struct Order {
@@ -108,13 +111,20 @@ contract marketplace {
     function _transfer(OrderPart calldata sender, address receiver) internal {
         if (sender.tokenType == TokenType.ETH) {
             require(msg.value == sender.quantity, "Wrong eth value");
-            payable(receiver).transfer(sender.quantity);
+            uint256 actualPrice = sender.quantity * fee_ / 1e10;
+            payable(receiver).transfer(actualPrice);
+
         } else if (sender.tokenType == TokenType.ERC20) {
-            require(IERC20(sender.contractAddress).transferFrom(sender.user, receiver, sender.quantity), "Fail transfer coins");
+            uint256 actualPrice = sender.quantity * fee_ / 1e10;
+            require(IERC20(sender.contractAddress).transferFrom(sender.user, receiver, actualPrice), "Fail transfer coins");
+            require(IERC20(sender.contractAddress).transferFrom(sender.user, address(this), sender.quantity-actualPrice), "Fail transfer coins");
+
         } else if (sender.tokenType == TokenType.ERC721) {
             IERC721(sender.contractAddress).safeTransferFrom(sender.user, receiver, sender.tokenId);
+
         } else if (sender.tokenType == TokenType.ERC1155) {
             IERC1155(sender.contractAddress).safeTransferFrom(sender.user, receiver, sender.tokenId, sender.quantity, "");
+
         } else {
             revert("Wrong tokenType");
         }
