@@ -47,7 +47,7 @@ contract marketplace {
 
     // actualPrice = price * fee_reverse / 1e10    => floor pay to user
     // fee_to_marketplace = price - actualPrice    => ceil fee
-    uint256 constant fee_reverse = (100 - 2.5) * 1e10;  // 2.5% fee
+    uint256 constant fee_reverse = (100 - 2.5) * 1e8;  // 2.5% fee
 
     enum TokenType {ETH, ERC20, ERC721, ERC1155}
     struct Order {
@@ -111,11 +111,11 @@ contract marketplace {
     function _transfer(OrderPart calldata sender, address receiver) internal {
         if (sender.tokenType == TokenType.ETH) {
             require(msg.value == sender.quantity, "Wrong eth value");
-            uint256 actualPrice = sender.quantity * fee_ / 1e10;
+            uint256 actualPrice = sender.quantity * fee_reverse / 1e10;
             payable(receiver).transfer(actualPrice);
 
         } else if (sender.tokenType == TokenType.ERC20) {
-            uint256 actualPrice = sender.quantity * fee_ / 1e10;
+            uint256 actualPrice = sender.quantity * fee_reverse / 1e10;
             require(IERC20(sender.contractAddress).transferFrom(sender.user, receiver, actualPrice), "Fail transfer coins");
             require(IERC20(sender.contractAddress).transferFrom(sender.user, address(this), sender.quantity-actualPrice), "Fail transfer coins");
 

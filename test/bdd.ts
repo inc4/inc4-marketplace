@@ -52,7 +52,7 @@ describe("Bdd", () => {
   it('offer', async () => {
 
     await mock721.mint(owner);
-    await mock20.mint(user, 20);
+    await mock20.mint(user, 200);
 
     const el = new EventLogger(marketplace);
     await el.events()
@@ -60,18 +60,20 @@ describe("Bdd", () => {
     const [token721, token20] = Object.values(marketplace.db.tokens);
     // owner of 721 = owner;   owner of 20 = user
 
-    expect(await mock20.balanceOf(user)).eq(20);
+    expect(await mock20.balanceOf(user)).eq(200);
     expect(await mock20.balanceOf(owner)).eq(0);
     expect(await mock721.ownerOf(0)).eq(owner);
 
     const sell = new OrderPart(token721, 10n, endtime(50));
-    const buy = new OrderPart(token20, 20n, endtime(50));
+    const buy = new OrderPart(token20, 200n, endtime(50));
+
+    console.log(buy)
 
     const offer = await new Offer(buy, sell).sign(userS);
 
     await marketplace.makeOffer(offer).should.be.rejected;
     await mock721.approve(marketplace.contract.address, 0);
-    await mock20.connect(userS).approve(marketplace.contract.address, 20)
+    await mock20.connect(userS).approve(marketplace.contract.address, 200)
 
 
     const offerId = await marketplace.makeOffer(offer)
@@ -86,7 +88,8 @@ describe("Bdd", () => {
     await marketplace.contract.acceptOrder(offer.toCallData());
 
     expect(await mock20.balanceOf(user)).eq(0);
-    expect(await mock20.balanceOf(owner)).eq(20);
+    expect(await mock20.balanceOf(owner)).eq(195);
+    expect(await mock20.balanceOf(marketplace.contract.address)).eq(5);
     expect(await mock721.ownerOf(0)).eq(user);
 
     // todo update tokens in db; check db
