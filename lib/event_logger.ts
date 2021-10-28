@@ -29,9 +29,10 @@ export class EventLogger {
       // erc20 and erc721
       new Event('Transfer', ['address', 'address', 'uint256'], async (log, a) => {
         if (log.topics.length == 3) // erc20
-          await this.onTransfer(log, a[0], a[1], 0n, a[2].toBigInt());
-        else // erc721
-          await this.onTransfer(log, a[0], a[1], a[2].toBigInt(), 1n);
+          return await this.onTransfer(log, a[0], a[1], 0n, a[2].toBigInt());
+        if (log.topics.length == 4) // erc721
+          return await this.onTransfer(log, a[0], a[1], a[2].toBigInt(), 1n);
+        console.error(log.topics, "not in (3, 4)")
       }),
 
       // erc1155
@@ -51,11 +52,12 @@ export class EventLogger {
 
     for (let e of events) {
       // old
-      const logs = await this.m.contract.provider.getLogs({
-        fromBlock: 'earliest',  // todo last processed block
-        topics: [e.encode()]
-      });
-      for (let l of logs) await e.onEvent(l)
+      // todo duplicates
+      // const logs = await this.m.contract.provider.getLogs({
+      //   fromBlock: 'earliest',  // todo last processed block
+      //   topics: [e.encode()]
+      // });
+      // for (let l of logs) await e.onEvent(l)
 
       // new
       this.m.contract.provider.on([e.encode()], l => e.onEvent(l))  // this == undefined without explicit lambda
@@ -68,7 +70,7 @@ export class EventLogger {
     console.log(log.address, from, to, tokenId, value)
     const contract = await this.updateContract(log.address)
 
-    await this.updateToken(contract, from, tokenId, value);
+    await this.updateToken(contract, from, tokenId, -value);
     await this.updateToken(contract, to, tokenId, value);
 
   }
@@ -76,6 +78,8 @@ export class EventLogger {
   async updateToken(contract: any, user: string, tokenId: bigint, valueD: bigint) {
     if (user == ZERO_ADDRESS) return;
 
+
+    console.log(user, tokenId, Number(valueD))
     // todo in one call
     const finded = await TokenContract.findOneAndUpdate(
       {
@@ -87,7 +91,8 @@ export class EventLogger {
         $inc: {'tokens.$.quantity': Number(valueD)},
       }).exec();
 
-    if (!finded)
+    if (finded === null) {
+      console.log("new token owner")
       await TokenContract.updateOne(
         {address: contract.address,},
         {
@@ -99,6 +104,7 @@ export class EventLogger {
             }
           }
         }).exec();
+    }
 
 
   }
