@@ -79,36 +79,37 @@ contract marketplace {
     }
 
 
-    function acceptOrder(Order calldata o) public payable {
+    function acceptOrder(Order memory o) public payable {
         _markFinalized(o);
         _transfer(o.left, o.right.user);
         _transfer(o.right, o.left.user);
     }
 
-    function cancelOrder(Order calldata o) public {
+    function cancelOrder(Order memory o) public {
         _markFinalized(o);
     }
 
 
-    function _markFinalized(Order calldata o) internal {
+    function _markFinalized(Order memory o) internal {
         require(o.left.endTime > block.timestamp, "Left order burn out");
         require(o.right.endTime > block.timestamp, "Right order burn out");
-
-        // also check right.user == msg.sender here
         bytes32 message = keccak256(abi.encodePacked(
                 o.left.tokenType, o.left.contractAddress, o.left.user, o.left.tokenId, o.left.quantity, o.left.endTime,
-                o.right.tokenType, o.right.contractAddress, msg.sender, o.right.tokenId, o.right.quantity, o.right.endTime,
+                o.right.tokenType, o.right.contractAddress, o.right.user, o.right.tokenId, o.right.quantity, o.right.endTime,
                 o.nonce
             ));
         require(cancelledOrFinalized[message] == false, "Already filled");
-
         require(_recover(message, o.sig) == o.left.user, "Fail to verify");
 
+        if (o.right.user != address(0))
+            require(o.right.user == msg.sender, "It's not for you");
+        else
+            o.right.user = msg.sender;  // set o.right.user to use it in _transfer later
 
         cancelledOrFinalized[message] = true;
     }
 
-    function _transfer(OrderPart calldata sender, address receiver) internal {
+    function _transfer(OrderPart memory sender, address receiver) internal {
         if (sender.tokenType == TokenType.ETH) {
             require(msg.value == sender.quantity, "Wrong eth value");
             uint256 actualPrice = sender.quantity * fee_reverse / 1e10;
@@ -117,7 +118,7 @@ contract marketplace {
         } else if (sender.tokenType == TokenType.ERC20) {
             uint256 actualPrice = sender.quantity * fee_reverse / 1e10;
             require(IERC20(sender.contractAddress).transferFrom(sender.user, receiver, actualPrice), "Fail transfer coins");
-            require(IERC20(sender.contractAddress).transferFrom(sender.user, address(this), sender.quantity-actualPrice), "Fail transfer coins");
+            require(IERC20(sender.contractAddress).transferFrom(sender.user, address(this), sender.quantity - actualPrice), "Fail transfer coins");
 
         } else if (sender.tokenType == TokenType.ERC721) {
             IERC721(sender.contractAddress).safeTransferFrom(sender.user, receiver, sender.tokenId);
@@ -132,7 +133,7 @@ contract marketplace {
     }
 
 
-    function _recover(bytes32 message, Sig calldata sig) internal pure returns (address) {
+    function _recover(bytes32 message, Sig memory sig) internal pure returns (address) {
         return ecrecover(
             keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", message)),
             sig.v, sig.r, sig.s
