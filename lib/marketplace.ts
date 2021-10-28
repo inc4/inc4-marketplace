@@ -1,52 +1,56 @@
 import {Contract} from "ethers";
-import {Offer, OrderPart, TokenType} from "./types";
-import {DatabaseMock} from "./db_mock";
 import {ethers} from "hardhat";
 import abi from "./abi.json";
+import {OrderFront, OrderPartFront, TokenType} from "./types/common";
+import {Order, TokenContract} from "./types/mongo";
 
 export class Marketplace {
 
   contract: Contract
-  db: DatabaseMock
 
-  constructor(contract: Contract, db: DatabaseMock) {
+  constructor(contract: Contract) {
     this.contract = contract;
-    this.db = db
   }
 
-  async makeOffer(offer: Offer): Promise<number> {
-    if (!offer.checkSign())
+  async createOrder(orderFront: OrderFront) {
+    if (!orderFront.checkSign())
       throw "Wrong sign";
-    if (!await this.checkApprove(offer.left))
+    if (!await this.checkApprove(orderFront.left))
       throw "Need approve";
 
-    return this.db.createOrder(offer)
-  }
-
-  getOffer(offerId: number): Offer {
-    return this.db.getOrder(offerId) as Offer;
+    const order = new Order(orderFront);
+    await order.save()
   }
 
 
-  async checkApprove(data: OrderPart): Promise<boolean> {
-    const tokenType = data.token.tokenContract.tokenType
-    const contract = await this.getContract(data.token.tokenContract.address);
+  // todo sort by last update time
+  async getOrders() {
+    return await Order.find().exec();
+  }
+
+  async getTokens() {
+    return await TokenContract.find().exec();
+  }
+
+
+  async checkApprove(data: OrderPartFront): Promise<boolean> {
+    const tokenType = data.tokenType
+    const contract = await this.getContractCaller(data.contractAddress);
 
     if (tokenType == TokenType.ERC20)
-      return await contract.allowance(data.token.owner, this.contract.address) >= data.quantity;
+      return await contract.allowance(data.user, this.contract.address) >= data.quantity;
 
     if (tokenType == TokenType.ERC721)
-      return await contract.getApproved(data.token.tokenId) == this.contract.address;
+      return await contract.getApproved(data.tokenId) == this.contract.address;
 
     if (tokenType == TokenType.ERC1155)
-      return await contract.isApprovedForAll(data.token.owner, this.contract.address);
+      return await contract.isApprovedForAll(data.user, this.contract.address);
 
     throw "Wrong tokenType";
 
   }
 
-
-  async getContract(address: string): Promise<Contract> {
+  async getContractCaller(address: string): Promise<Contract> {
     return await ethers.getContractAt(abi, address);
   }
 

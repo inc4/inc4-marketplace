@@ -1,8 +1,9 @@
 import {ethers} from "hardhat";
 import {Contract} from "ethers";
 import {Log} from "hardhat-deploy/dist/types";
-import {TokenContract, TokenType} from "./types";
 import {Marketplace} from "./marketplace";
+import {TokenContract} from "./types/mongo";
+import {TokenType} from "./types/common";
 
 
 const interfaceId: { [iid: string]: TokenType } = {
@@ -64,30 +65,44 @@ export class EventLogger {
   }
 
   async onTransfer(log: Log, from: string, to: string, tokenId: bigint, value: bigint) {
+    console.log(log.address, from, to, tokenId, value)
     const contract = await this.updateContract(log.address)
 
-    this.updateToken(contract, from, tokenId, value);
-    this.updateToken(contract, to, tokenId, value);
+    await this.updateToken(contract, from, tokenId, value);
+    await this.updateToken(contract, to, tokenId, value);
 
-    console.log(from, to, tokenId, value)
   }
 
-  updateToken(contract: TokenContract, user: string, tokenId: bigint, valueD: bigint) {
+  async updateToken(contract: any, user: string, tokenId: bigint, valueD: bigint) {
     if (user == ZERO_ADDRESS) return;
-    this.m.db.updateToken(contract, user, tokenId, valueD)
+
+    // todo
+    await TokenContract.findOneAndUpdate(
+      {
+        address: contract.address,
+      },
+      {
+        $inc: {'tokens.$[token].quantity': Number(valueD)},
+        $set: {'tokens.$[token].owner': user},
+      },
+      {
+        arrayFilters: [{token: {tokenId: Number(tokenId)}}],
+        upsert: true
+      }).exec()
+
   }
 
 
-  async updateContract(address: string): Promise<TokenContract> {
-    let tokenContract = this.m.db.getContract(address);
-    if (tokenContract !== undefined) return tokenContract;
+  async updateContract(address: string): Promise<typeof TokenContract> {
+    let tokenContract = await TokenContract.findOne({address}).exec();
+    if (tokenContract !== null) return tokenContract;
 
-    const contract = await this.m.getContract(address);
+    const contract = await this.m.getContractCaller(address);
     const type = await this.getContractType(contract);
     if (type === undefined) throw "Unknown contract type";
 
-    tokenContract = new TokenContract(type, address, "todo name not in erc");
-    this.m.db.setContract(tokenContract)
+    tokenContract = new TokenContract({tokenType: type.valueOf(), address: address, name: "todo name not in erc"});
+    await tokenContract.save();
     return tokenContract;
   }
 
