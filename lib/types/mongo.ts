@@ -29,7 +29,8 @@ export const TokenContract = model('TokenContract', TokenContractSchema);
 
 
 export const OrderPart = new Schema({
-  contract: String,
+  tokenType: Number,
+  contractAddress: String,
   tokenId: Number,
 
   quantity: Number,
@@ -38,34 +39,12 @@ export const OrderPart = new Schema({
 });
 
 
-const orderSchema = new Schema({
+export const Order = model('Order', new Schema({
+  chainId: Number,
   left: OrderPart,
   right: OrderPart,
 
   nonce: Number,
   signature: String
-});
-
-orderSchema.methods.toCallData = function () {
-  const callDataPart = (part: any) => {
-    return {
-      tokenType: part.contract.tokenType,
-      contractAddress: part.contract.address,
-      user: part.user,
-      tokenId: part.tokenId,
-      quantity: part.quantity,
-      endTime: part.endTime
-    };
-  }
-  const {r, s, v} = ethers.utils.splitSignature(ethers.utils.arrayify(this.signature))
-  return {
-    left: callDataPart(this.left),
-    right: callDataPart(this.right),
-    nonce: this.nonce,
-    sig: {r, s, v},
-  };
-};
-
-
-export const Order = model('Order', orderSchema);
+}));
 

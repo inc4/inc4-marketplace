@@ -28,6 +28,10 @@ export class Marketplace {
     return await Order.find().exec();
   }
 
+  async getOrder(orderId: any) {
+    return await Order.find({_id: orderId}).exec();
+  }
+
   async getTokens() {
     return await TokenContract.find().exec();
   }

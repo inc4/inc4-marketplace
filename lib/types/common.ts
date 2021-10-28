@@ -25,6 +25,10 @@ export class OrderPartFront {
     this.endTime = endTime;
   }
 
+  static fromJson(obj: OrderPartFront): OrderPartFront {
+    return new OrderPartFront(obj.tokenType, obj.contractAddress, obj.tokenId, obj.user, obj.quantity, obj.endTime)
+  }
+
   pack() {
     return ethers.utils.solidityPack(
       ['uint8', 'address', 'address', 'uint256', 'uint256', 'uint256'],
@@ -46,6 +50,12 @@ export class OrderFront {
     this.left = left;
     this.right = right;
     this.nonce = nonce;
+  }
+
+  static fromJson(obj: OrderFront): OrderFront {
+    const order = new OrderFront(obj.chainId, OrderPartFront.fromJson(obj.left), OrderPartFront.fromJson(obj.right), obj.nonce)
+    order.setSignature(obj.signature)
+    return order
   }
 
   setSignature(signature: string) {

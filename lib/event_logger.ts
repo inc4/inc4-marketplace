@@ -81,7 +81,7 @@ export class EventLogger {
 
     console.log(user, tokenId, Number(valueD))
     // todo in one call
-    const finded = await TokenContract.findOneAndUpdate(
+    const found = await TokenContract.findOneAndUpdate(
       {
         address: contract.address,
         'tokens.tokenId': Number(tokenId),
@@ -91,7 +91,7 @@ export class EventLogger {
         $inc: {'tokens.$.quantity': Number(valueD)},
       }).exec();
 
-    if (finded === null) {
+    if (found === null) {
       console.log("new token owner")
       await TokenContract.updateOne(
         {address: contract.address,},
