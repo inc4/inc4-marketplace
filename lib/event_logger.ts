@@ -76,19 +76,30 @@ export class EventLogger {
   async updateToken(contract: any, user: string, tokenId: bigint, valueD: bigint) {
     if (user == ZERO_ADDRESS) return;
 
-    // todo
-    await TokenContract.findOneAndUpdate(
+    // todo in one call
+    const finded = await TokenContract.findOneAndUpdate(
       {
         address: contract.address,
+        'tokens.tokenId': Number(tokenId),
+        'tokens.owner': user
       },
       {
-        $inc: {'tokens.$[token].quantity': Number(valueD)},
-        $set: {'tokens.$[token].owner': user},
-      },
-      {
-        arrayFilters: [{token: {tokenId: Number(tokenId)}}],
-        upsert: true
-      }).exec()
+        $inc: {'tokens.$.quantity': Number(valueD)},
+      }).exec();
+
+    if (!finded)
+      await TokenContract.updateOne(
+        {address: contract.address,},
+        {
+          $push: {
+            tokens: {
+              tokenId: Number(tokenId),
+              owner: user,
+              quantity: Number(valueD),
+            }
+          }
+        }).exec();
+
 
   }
 
