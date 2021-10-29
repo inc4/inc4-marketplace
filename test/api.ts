@@ -75,15 +75,15 @@ describe("Api", function() {
     let [tokens721, tokens20] = await (await fetch(url + '/tokens')).json();
 
     expect(tokens721.tokens.length).eq(1);
-    expect(tokens721.tokens[0]).includes({tokenId: 0, owner: owner, quantity: 1});
+    expect(tokens721.tokens[0]).includes({tokenId: "0", owner: owner, quantity: 1});
     expect(tokens20.tokens.length).eq(1);
-    expect(tokens20.tokens[0]).includes({tokenId: 0, owner: user, quantity: 200});
+    expect(tokens20.tokens[0]).includes({tokenId: "0", owner: user, quantity: 200});
 
 
     const order1 = new OrderFront(
       42,
       new OrderPartFront(TokenType.ERC721, tokens721.address, tokens721.tokens[0].tokenId, owner, 1, endtime(100)),
-      new OrderPartFront(TokenType.ERC20, tokens20.address, 0, user, 200, endtime(100)),
+      new OrderPartFront(TokenType.ERC20, tokens20.address, "0", user, 200, endtime(100)),
       Date.now()
     )
     order1.setSignature(await ownerS.signMessage(order1.toMessage()))

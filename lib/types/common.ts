@@ -10,13 +10,13 @@ export enum TokenType {
 export class OrderPartFront {
   tokenType: TokenType
   contractAddress: string
-  tokenId: number
+  tokenId: string
   user: string
   quantity: number
   endTime: number
 
 
-  constructor(tokenType: TokenType, contractAddress: string, tokenId: number, user: string, quantity: number, endTime: number) {
+  constructor(tokenType: TokenType, contractAddress: string, tokenId: string, user: string, quantity: number, endTime: number) {
     this.tokenType = tokenType;
     this.contractAddress = contractAddress;
     this.tokenId = tokenId;

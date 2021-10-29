@@ -51,8 +51,8 @@ describe("Contract", () => {
 
     const order = new OrderFront(
       42,
-      new OrderPartFront(TokenType.ERC721, mock721.address, 0, owner, 1, endtime(100)),
-      new OrderPartFront(TokenType.ERC20, mock20.address, 0, user, 200, endtime(100)),
+      new OrderPartFront(TokenType.ERC721, mock721.address, "0", owner, 1, endtime(100)),
+      new OrderPartFront(TokenType.ERC20, mock20.address, "0", user, 200, endtime(100)),
       Date.now()
     )
     order.setSignature(await ownerS.signMessage(order.toMessage()))
@@ -71,8 +71,8 @@ describe("Contract", () => {
 
     const order = new OrderFront(
       42,
-      new OrderPartFront(TokenType.ERC721, mock721.address, 0, owner, 1, endtime(100)),
-      new OrderPartFront(TokenType.ERC20, mock20.address, 0, user, 200, endtime(-5)),
+      new OrderPartFront(TokenType.ERC721, mock721.address, "0", owner, 1, endtime(100)),
+      new OrderPartFront(TokenType.ERC20, mock20.address, "0", user, 200, endtime(-5)),
       Date.now()
     )
     order.setSignature(await ownerS.signMessage(order.toMessage()))

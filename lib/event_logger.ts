@@ -84,7 +84,7 @@ export class EventLogger {
     const found = await TokenContract.findOneAndUpdate(
       {
         address: contract.address,
-        'tokens.tokenId': Number(tokenId),
+        'tokens.tokenId': tokenId.toString(),
         'tokens.owner': user
       },
       {
@@ -98,7 +98,7 @@ export class EventLogger {
         {
           $push: {
             tokens: {
-              tokenId: Number(tokenId),
+              tokenId: tokenId.toString(),
               owner: user,
               quantity: Number(valueD),
             }

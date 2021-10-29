@@ -65,15 +65,15 @@ describe("Marketplace", () => {
     // owner of 721 = owner;   owner of 20 = user
 
     expect(tokens721.tokens.length).eq(1);
-    expect(tokens721.tokens[0]).includes({tokenId: 0, owner: owner, quantity: 1});
+    expect(tokens721.tokens[0]).includes({tokenId: "0", owner: owner, quantity: 1});
     expect(tokens20.tokens.length).eq(1);
-    expect(tokens20.tokens[0]).includes({tokenId: 0, owner: user, quantity: 200});
+    expect(tokens20.tokens[0]).includes({tokenId: "0", owner: user, quantity: 200});
 
 
     const order = new OrderFront(
       42,
       new OrderPartFront(TokenType.ERC721, tokens721.address, tokens721.tokens[0].tokenId, owner, 1, endtime(100)),
-      new OrderPartFront(TokenType.ERC20, tokens20.address, 0, user, 200, endtime(100)),
+      new OrderPartFront(TokenType.ERC20, tokens20.address, "0", user, 200, endtime(100)),
       Date.now()
     )
     order.setSignature(await ownerS.signMessage(order.toMessage()))
@@ -100,11 +100,11 @@ describe("Marketplace", () => {
 
     [tokens721, tokens20] = await marketplace.getTokens();
 
-    expect(tokens721.tokens[0]).includes({tokenId: 0, owner: owner, quantity: 0});
-    expect(tokens721.tokens[1]).includes({tokenId: 0, owner: user, quantity: 1});
-    expect(tokens20.tokens[0]).includes({tokenId: 0, owner: user, quantity: 0});
-    expect(tokens20.tokens[1]).includes({tokenId: 0, owner: owner, quantity: 195});
-    expect(tokens20.tokens[2]).includes({tokenId: 0, owner: marketplace.contract.address, quantity: 5});
+    expect(tokens721.tokens[0]).includes({tokenId: "0", owner: owner, quantity: 0});
+    expect(tokens721.tokens[1]).includes({tokenId: "0", owner: user, quantity: 1});
+    expect(tokens20.tokens[0]).includes({tokenId: "0", owner: user, quantity: 0});
+    expect(tokens20.tokens[1]).includes({tokenId: "0", owner: owner, quantity: 195});
+    expect(tokens20.tokens[2]).includes({tokenId: "0", owner: marketplace.contract.address, quantity: 5});
 
   });
 

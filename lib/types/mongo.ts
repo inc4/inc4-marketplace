@@ -7,7 +7,7 @@ const {Schema} = mongoose;
 
 
 export const TokenSchema = new Schema({
-  tokenId: Number,
+  tokenId: String,
 
   owner: String,
   quantity: Number,
@@ -31,7 +31,7 @@ export const TokenContract = model('TokenContract', TokenContractSchema);
 export const OrderPart = new Schema({
   tokenType: Number,
   contractAddress: String,
-  tokenId: Number,
+  tokenId: String,
 
   quantity: Number,
   user: String,
