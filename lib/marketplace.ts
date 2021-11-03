@@ -1,21 +1,25 @@
-import {Contract} from "ethers";
-import {ethers} from "hardhat";
+import {Contract, ethers, providers} from "ethers";
 import abi from "./abi.json";
 import {OrderFront, OrderPartFront, TokenType} from "./types/common";
 import {Order, TokenContract} from "./types/mongo";
+import {EventLogger} from "./event_logger";
 
 export class Marketplace {
 
-  contract: Contract
+  contract: Contract;
+  chains: { [chainId: number]: providers.JsonRpcProvider }
+  eventLogger: EventLogger;
 
-  constructor(contract: Contract) {
+  constructor(contract: Contract, chains: { [id: number]: providers.JsonRpcProvider }) {
     this.contract = contract;
+    this.chains = chains;
+    this.eventLogger = new EventLogger(this);
   }
 
   async createOrder(orderFront: OrderFront) {
     if (!orderFront.checkSign())
       throw "Wrong sign";
-    if (!await this.checkApprove(orderFront.left))
+    if (!await this.checkApprove(orderFront.left, orderFront.chainId))
       throw "Need approve";
 
     const order = new Order(orderFront);
@@ -37,9 +41,9 @@ export class Marketplace {
   }
 
 
-  async checkApprove(data: OrderPartFront): Promise<boolean> {
+  async checkApprove(data: OrderPartFront, chainId: number): Promise<boolean> {
     const tokenType = data.tokenType
-    const contract = await this.getContractCaller(data.contractAddress);
+    const contract = this.getContractCaller(data.contractAddress, chainId);
 
     if (tokenType == TokenType.ERC20)
       return await contract.allowance(data.user, this.contract.address) >= data.quantity;
@@ -54,8 +58,9 @@ export class Marketplace {
 
   }
 
-  async getContractCaller(address: string): Promise<Contract> {
-    return await ethers.getContractAt(abi, address);
+  getContractCaller(address: string, chainId: number): Contract {
+    const provider = this.chains[chainId];
+    return ethers.ContractFactory.getContract(address, abi, provider.getSigner());
   }
 
 }

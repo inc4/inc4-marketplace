@@ -7,6 +7,7 @@ import {OrderFront, OrderPartFront, TokenType} from "../lib/types/common";
 import {EventLogger} from "../lib/event_logger";
 import amongus from "mongoose";
 import {Order, TokenContract} from "../lib/types/mongo";
+import {chains} from "../lib/config";
 
 chai.should();
 chai.use(chaiAsPromised);
@@ -35,7 +36,7 @@ describe("Marketplace", () => {
     mock721 = await ethers.getContract("mockERC721", ownerS);
 
     const marketplaceContract = await ethers.getContract("marketplace", ownerS);
-    marketplace = new Marketplace(marketplaceContract);
+    marketplace = new Marketplace(marketplaceContract, chains);
 
     await amongus.connect('mongodb://root:example@localhost:27017/admin');
 
@@ -43,7 +44,7 @@ describe("Marketplace", () => {
 
   beforeEach(async () => {
     await deployments.fixture(["mocks", "marketplace"]); // reset contracts state
-    marketplace.contract.provider.removeAllListeners()
+    marketplace.eventLogger.removeListeners();
     await TokenContract.deleteMany({});
     await Order.deleteMany({});
   });
@@ -54,8 +55,7 @@ describe("Marketplace", () => {
     await mock721.mint(owner);
     await mock20.mint(user, 200);
 
-    const el = new EventLogger(marketplace);
-    await el.events()
+    await marketplace.eventLogger.listen();
 
     await sleep(5000);
 
@@ -91,7 +91,7 @@ describe("Marketplace", () => {
 
 
     // frontend will check it before transaction
-    await marketplace.checkApprove(order.right);
+    await marketplace.checkApprove(order.right, order.chainId);
 
     await marketplace.contract.connect(userS).acceptOrder(order.toCallData());
 

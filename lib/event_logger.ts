@@ -1,5 +1,4 @@
-import {ethers} from "hardhat";
-import {Contract} from "ethers";
+import {Contract, ethers} from "ethers";
 import {Log} from "hardhat-deploy/dist/types";
 import {Marketplace} from "./marketplace";
 import {TokenContract} from "./types/mongo";
@@ -23,59 +22,71 @@ export class EventLogger {
     this.m = marketplace;
   }
 
-  async events() {
+  async listen() {
 
     const events = [
       // erc20 and erc721
-      new Event('Transfer', ['address', 'address', 'uint256'], async (log, a) => {
-        if (log.topics.length == 3) // erc20
-          return await this.onTransfer(log, a[0], a[1], 0n, a[2].toBigInt());
-        if (log.topics.length == 4) // erc721
-          return await this.onTransfer(log, a[0], a[1], a[2].toBigInt(), 1n);
-        console.error(log.topics, "not in (3, 4)")
-      }),
+      new Event('Transfer', ['address', 'address', 'uint256'],
+        async (log, chainId: number, a) => {
+          if (log.topics.length == 3) // erc20
+            return await this.onTransfer(log, chainId, a[0], a[1], 0n, a[2].toBigInt());
+          if (log.topics.length == 4) // erc721
+            return await this.onTransfer(log, chainId, a[0], a[1], a[2].toBigInt(), 1n);
+          console.error(log.topics, "length not in (3, 4)")
+        }),
 
       // erc1155
       new Event('TransferSingle', ['address', 'address', 'address', 'uint256', 'uint256',],
-        async (log, a) => {
-          await this.onTransfer(log, a[1], a[2], a[3].toBigInt(), a[4].toBigInt());
+        async (log, chainId: number, a) => {
+          await this.onTransfer(log, chainId, a[1], a[2], a[3].toBigInt(), a[4].toBigInt());
         }
       ),
       new Event('TransferBatch', ['address', 'address', 'address', 'uint256[]', 'uint256[]',],
-        async (log, a) => {
+        async (log, chainId: number, a) => {
           for (let i = 0; i < a[3]; i++) {
-            await this.onTransfer(log, a[1], a[2], a[3][i].toBigInt(), a[4][i].toBigInt());
+            await this.onTransfer(log, chainId, a[1], a[2], a[3][i].toBigInt(), a[4][i].toBigInt());
           }
         })
 
     ]
 
-    for (let e of events) {
-      // old
-      // todo duplicates
-      // const logs = await this.m.contract.provider.getLogs({
-      //   fromBlock: 'earliest',  // todo last processed block
-      //   topics: [e.encode()]
-      // });
-      // for (let l of logs) await e.onEvent(l)
+    for (let chainIdS in this.m.chains) {
+      const chainId = Number(chainIdS)
+      const provider = this.m.chains[chainId];
 
-      // new
-      this.m.contract.provider.on([e.encode()], l => e.onEvent(l))  // this == undefined without explicit lambda
+      for (let e of events) {
+        // old
+        // todo duplicates
+        // const logs = await provider.getLogs({
+        //   fromBlock: 'earliest',  // todo last processed block
+        //   topics: [e.encode()]
+        // });
+        // for (let l of logs) await e.onEvent(l, chainId)
 
+        // new
+        provider.on([e.encode()], l => e.onEvent(l, chainId))
+      }
     }
 
   }
 
-  async onTransfer(log: Log, from: string, to: string, tokenId: bigint, value: bigint) {
-    console.log(log.address, from, to, tokenId, value)
-    const contract = await this.updateContract(log.address)
-
-    await this.updateToken(contract, from, tokenId, -value);
-    await this.updateToken(contract, to, tokenId, value);
+  removeListeners() {
+    for (let chainId in this.m.chains)
+      this.m.chains[chainId].removeAllListeners();
 
   }
 
-  async updateToken(contract: any, user: string, tokenId: bigint, valueD: bigint) {
+
+  async onTransfer(log: Log, chainId: number, from: string, to: string, tokenId: bigint, value: bigint) {
+    console.log(log.address, from, to, tokenId, value)
+    const contract = await this.updateContract(log.address, chainId)
+
+    await this.updateToken(chainId, contract, from, tokenId, -value);
+    await this.updateToken(chainId, contract, to, tokenId, value);
+
+  }
+
+  async updateToken(chainId: number, contract: any, user: string, tokenId: bigint, valueD: bigint) {
     if (user == ZERO_ADDRESS) return;
 
 
@@ -83,6 +94,7 @@ export class EventLogger {
     // todo in one call
     const found = await TokenContract.findOneAndUpdate(
       {
+        chainId: chainId,
         address: contract.address,
         'tokens.tokenId': tokenId.toString(),
         'tokens.owner': user
@@ -94,7 +106,10 @@ export class EventLogger {
     if (found === null) {
       console.log("new token owner")
       await TokenContract.updateOne(
-        {address: contract.address,},
+        {
+          chainId: chainId,
+          address: contract.address
+        },
         {
           $push: {
             tokens: {
@@ -110,15 +125,20 @@ export class EventLogger {
   }
 
 
-  async updateContract(address: string): Promise<typeof TokenContract> {
+  async updateContract(address: string, chainId: number): Promise<typeof TokenContract> {
     let tokenContract = await TokenContract.findOne({address}).exec();
     if (tokenContract !== null) return tokenContract;
 
-    const contract = await this.m.getContractCaller(address);
+    const contract = await this.m.getContractCaller(address, chainId);
     const type = await this.getContractType(contract);
     if (type === undefined) throw "Unknown contract type";
 
-    tokenContract = new TokenContract({tokenType: type.valueOf(), address: address, name: "todo name not in erc"});
+    tokenContract = new TokenContract({
+      chainId: chainId,
+      tokenType: type.valueOf(),
+      address: address,
+      name: "todo name not in erc"  // todo
+    });
     await tokenContract.save();
     return tokenContract;
   }
@@ -136,10 +156,10 @@ export class EventLogger {
 class Event {
   name: string
   args: string[]
-  callback: (log: Log, args: ReadonlyArray<any>) => Promise<void>
+  callback: (log: Log, chainId: number, args: ReadonlyArray<any>) => Promise<void>
 
 
-  constructor(name: string, args: string[], callback: (log: Log, args: ReadonlyArray<any>) => Promise<void>) {
+  constructor(name: string, args: string[], callback: (log: Log, chainId: number, args: ReadonlyArray<any>) => Promise<void>) {
     this.name = name;
     this.args = args;
     this.callback = callback;
@@ -156,7 +176,7 @@ class Event {
     return abiCoder.decode(this.args, ethers.utils.hexConcat(values));
   }
 
-  async onEvent(log: Log) {
-    await this.callback(log, this.decode(log.topics, log.data))
+  async onEvent(log: Log, chainId: number) {
+    await this.callback(log, chainId, this.decode(log.topics, log.data))
   }
 }
