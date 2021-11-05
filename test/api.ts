@@ -5,11 +5,9 @@ import {Marketplace} from "../lib/marketplace";
 import chaiAsPromised from "chai-as-promised";
 import fetch from "node-fetch";
 import {OrderFront, OrderPartFront, TokenType} from "../lib/types/common";
-import {EventLogger} from "../lib/event_logger";
 import amongus from "mongoose";
 import {Order, TokenContract} from "../lib/types/mongo";
 import {start} from "../lib/api";
-import {chains} from "../lib/config";
 
 chai.should();
 chai.use(chaiAsPromised);
@@ -38,7 +36,7 @@ describe("Api", function() {
     mock721 = await ethers.getContract("mockERC721", ownerS);
 
     const marketplaceContract = await ethers.getContract("marketplace", ownerS);
-    marketplace = new Marketplace(marketplaceContract, chains);
+    marketplace = new Marketplace(marketplaceContract);
 
     await amongus.connect('mongodb://root:example@localhost:27017/admin');
 
@@ -62,7 +60,7 @@ describe("Api", function() {
     await mock721.approve(marketplace.contract.address, 0);
     await mock20.connect(userS).approve(marketplace.contract.address, 200)
 
-    await marketplace.eventLogger.listen();
+    await marketplace.eventLogger.listenEvents();
 
     await start(marketplace);
     const url = "http://localhost:8080"
@@ -97,7 +95,7 @@ describe("Api", function() {
     const order2 = OrderFront.fromJson(orderJson);
 
     // frontend will check it before transaction
-    expect(await marketplace.checkApprove(order2.right, order2.chainId)).to.be.true;
+    expect(await marketplace.checkApprove(order2.right)).to.be.true;
 
     await marketplace.contract.connect(userS).acceptOrder(order2.toCallData());
 

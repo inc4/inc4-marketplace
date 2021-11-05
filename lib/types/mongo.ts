@@ -15,8 +15,6 @@ export const TokenSchema = new Schema({
 
 
 export const TokenContractSchema = new Schema({
-  chainId: Number,
-
   address: String,
 
   tokenType: Number,

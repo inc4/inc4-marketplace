@@ -7,19 +7,17 @@ import {EventLogger} from "./event_logger";
 export class Marketplace {
 
   contract: Contract;
-  chains: { [chainId: number]: providers.JsonRpcProvider }
   eventLogger: EventLogger;
 
-  constructor(contract: Contract, chains: { [id: number]: providers.JsonRpcProvider }) {
+  constructor(contract: Contract) {
     this.contract = contract;
-    this.chains = chains;
     this.eventLogger = new EventLogger(this);
   }
 
   async createOrder(orderFront: OrderFront) {
     if (!orderFront.checkSign())
       throw "Wrong sign";
-    if (!await this.checkApprove(orderFront.left, orderFront.chainId))
+    if (!await this.checkApprove(orderFront.left))
       throw "Need approve";
 
     const order = new Order(orderFront);
@@ -41,9 +39,9 @@ export class Marketplace {
   }
 
 
-  async checkApprove(data: OrderPartFront, chainId: number): Promise<boolean> {
+  async checkApprove(data: OrderPartFront): Promise<boolean> {
     const tokenType = data.tokenType
-    const contract = this.getContractCaller(data.contractAddress, chainId);
+    const contract = this.getContractCaller(data.contractAddress);
 
     if (tokenType == TokenType.ERC20)
       return await contract.allowance(data.user, this.contract.address) >= data.quantity;
@@ -58,9 +56,8 @@ export class Marketplace {
 
   }
 
-  getContractCaller(address: string, chainId: number): Contract {
-    const provider = this.chains[chainId];
-    return ethers.ContractFactory.getContract(address, abi, provider.getSigner());
+  getContractCaller(address: string): Contract {
+    return ethers.ContractFactory.getContract(address, abi);
   }
 
 }

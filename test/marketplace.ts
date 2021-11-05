@@ -36,7 +36,7 @@ describe("Marketplace", () => {
     mock721 = await ethers.getContract("mockERC721", ownerS);
 
     const marketplaceContract = await ethers.getContract("marketplace", ownerS);
-    marketplace = new Marketplace(marketplaceContract, chains);
+    marketplace = new Marketplace(marketplaceContract);
 
     await amongus.connect('mongodb://root:example@localhost:27017/admin');
 
@@ -55,7 +55,7 @@ describe("Marketplace", () => {
     await mock721.mint(owner);
     await mock20.mint(user, 200);
 
-    await marketplace.eventLogger.listen();
+    await marketplace.eventLogger.listenEvents();
 
     await sleep(5000);
 
@@ -91,7 +91,7 @@ describe("Marketplace", () => {
 
 
     // frontend will check it before transaction
-    await marketplace.checkApprove(order.right, order.chainId);
+    await marketplace.checkApprove(order.right);
 
     await marketplace.contract.connect(userS).acceptOrder(order.toCallData());
 
