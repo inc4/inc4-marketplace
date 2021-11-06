@@ -1,7 +1,7 @@
-import {Contract, ethers, providers} from "ethers";
+import {Contract, ethers} from "ethers";
 import abi from "./abi.json";
 import {OrderFront, OrderPartFront, TokenType} from "./types/common";
-import {Order, TokenContract} from "./types/mongo";
+import {MarketplaceData, Order, TokensCollection} from "./types/mongo";
 import {EventLogger} from "./event_logger";
 
 export class Marketplace {
@@ -35,7 +35,7 @@ export class Marketplace {
   }
 
   async getTokens() {
-    return await TokenContract.find().exec();
+    return await TokensCollection.find().exec();
   }
 
 
@@ -57,7 +57,7 @@ export class Marketplace {
   }
 
   getContractCaller(address: string): Contract {
-    return ethers.ContractFactory.getContract(address, abi);
+    return ethers.ContractFactory.getContract(address, abi, this.contract.signer);
   }
 
 }

@@ -1,29 +1,22 @@
-import mongoose, {model} from 'mongoose';
-import {ethers} from "hardhat";
+import {model, Schema} from 'mongoose';
 
-const {Schema} = mongoose;
-
-// todo big number ?
+// todo https://mongoosejs.com/docs/typescript.html
 
 
-export const TokenSchema = new Schema({
+const TokenSchema = new Schema({
   tokenId: String,
 
-  owner: String,
-  quantity: Number,
-}, {_id: false});
+  owners: {type: Map, of: Number},
+}, {_id: false})
 
-
-export const TokenContractSchema = new Schema({
-  address: String,
-
+export const TokensCollection = model('TokensCollection', new Schema({
+  contractAddress: String,
   tokenType: Number,
   name: String,
+  owner: String,
 
-  tokens: [TokenSchema]
-});
-
-export const TokenContract = model('TokenContract', TokenContractSchema);
+  tokens: [TokenSchema],
+}));
 
 
 export const OrderPart = new Schema({
@@ -38,7 +31,6 @@ export const OrderPart = new Schema({
 
 
 export const Order = model('Order', new Schema({
-  chainId: Number,
   left: OrderPart,
   right: OrderPart,
 

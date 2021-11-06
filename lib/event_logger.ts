@@ -1,9 +1,8 @@
-import {Contract, ethers} from "ethers";
-import {Log} from "hardhat-deploy/dist/types";
+import {ethers} from "ethers";
 import {Marketplace} from "./marketplace";
-import {TokenContract} from "./types/mongo";
+import {TokensCollection} from "./types/mongo";
 import {TokenType} from "./types/common";
-import {BlockTag} from "@ethersproject/abstract-provider/src.ts/index";
+import {BlockTag, Log} from "@ethersproject/abstract-provider/src.ts/index";
 
 
 const interfaceId: { [iid: string]: TokenType } = {
@@ -13,7 +12,6 @@ const interfaceId: { [iid: string]: TokenType } = {
 }
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
-
 
 
 class Event {
@@ -45,7 +43,6 @@ class Event {
 }
 
 
-
 export class EventLogger {
 
   m: Marketplace
@@ -55,14 +52,11 @@ export class EventLogger {
   }
 
   events = [
-    // erc20 and erc721
+    // erc721 (and erc20)
     new Event('Transfer', ['address', 'address', 'uint256'],
       async (log, a) => {
-        if (log.topics.length == 3) // erc20
-          return await this.onTransfer(log, a[0], a[1], 0n, a[2].toBigInt());
-        if (log.topics.length == 4) // erc721
-          return await this.onTransfer(log, a[0], a[1], a[2].toBigInt(), 1n);
-        console.error(log.topics, "length not in (3, 4)")
+        if (log.topics.length == 4) // erc721  ( 3 in erc20 )
+          await this.onTransfer(log, a[0], a[1], a[2].toBigInt(), 1n);
       }),
 
     // erc1155
@@ -92,52 +86,64 @@ export class EventLogger {
   }
 
   async listenEvents() {
-      for (let e of this.events)
-        this.m.contract.provider.on([e.encode()], l => e.onEvent(l))
+    for (let e of this.events)
+      this.m.contract.provider.on([e.encode()], l => e.onEvent(l))
   }
 
   removeListeners() {
-      this.m.contract.provider.removeAllListeners();
+    this.m.contract.provider.removeAllListeners();
   }
 
 
   async onTransfer(log: Log, from: string, to: string, tokenId: bigint, value: bigint) {
     console.log(log.address, from, to, tokenId, value)
-    const contract = await this.updateContract(log.address)
 
-    await this.updateToken(contract, from, tokenId, -value);
-    await this.updateToken(contract, to, tokenId, value);
+    let collection = await TokensCollection.findOne({address: log.address}).exec();
+    if (collection === null) {
+      if (from !== ZERO_ADDRESS) throw "First contract transfer is not mint."
+      const type = await this.getContractType(log.address);
 
+      // owner = first minter of the contract
+      // may work wrong with lazy minting contracts
+      // todo get contract deployer address
+      const owner = await this.getTxFrom(log.transactionHash)
+
+      collection = await new TokensCollection({
+        contractAddress: log.address,
+        tokenType: type.valueOf(),
+        owner: owner
+      }).save();
+    }
+
+    await this.updateToken(collection, from, tokenId, -value);
+    await this.updateToken(collection, to, tokenId, value);
   }
 
-  async updateToken(contract: any, user: string, tokenId: bigint, valueD: bigint) {
+  async updateToken(collection: any, user: string, tokenId: bigint, valueD: bigint) {
     if (user == ZERO_ADDRESS) return;
-
 
     console.log(user, tokenId, Number(valueD))
     // todo in one call
-    const found = await TokenContract.findOneAndUpdate(
+    const found = await TokensCollection.findOneAndUpdate(
       {
-        address: contract.address,
-        'tokens.tokenId': tokenId.toString(),
-        'tokens.owner': user
+        contractAddress: collection.contractAddress,
+        'tokens.tokenId': tokenId.toString()
       },
       {
-        $inc: {'tokens.$.quantity': Number(valueD)},
+        $inc: {[`tokens.$.owners.${user}`]: Number(valueD)},
       }).exec();
 
     if (found === null) {
-      console.log("new token owner")
-      await TokenContract.updateOne(
+      console.log("new token")
+      await TokensCollection.updateOne(
         {
-          address: contract.address
+          contractAddress: collection.contractAddress
         },
         {
           $push: {
             tokens: {
               tokenId: tokenId.toString(),
-              owner: user,
-              quantity: Number(valueD),
+              owners: {[user]: Number(valueD)},
             }
           }
         }).exec();
@@ -146,35 +152,19 @@ export class EventLogger {
 
   }
 
-
-  async updateContract(address: string): Promise<typeof TokenContract> {
-    let tokenContract = await TokenContract.findOne({address}).exec();
-    if (tokenContract !== null) return tokenContract;
-
+  async getContractType(address: string): Promise<TokenType> {
     const contract = await this.m.getContractCaller(address);
-    const type = await this.getContractType(contract);
-    if (type === undefined) throw "Unknown contract type";
 
-    // todo
-    const name = type == TokenType.ERC721 ? "todo get name from contract" : "";
-
-    tokenContract = new TokenContract({
-      tokenType: type.valueOf(),
-      address: address,
-      name: name
-    });
-    await tokenContract.save();
-    return tokenContract;
-  }
-
-  async getContractType(contract: Contract): Promise<TokenType | undefined> {
     for (let iid in interfaceId)
       if (await contract.supportsInterface(iid))
         return interfaceId[iid];
+
+    throw "Unknown contract type";
   }
 
 
-
-
-
+  private async getTxFrom(transactionHash: string): Promise<string> {
+    const tx = await this.m.contract.provider.getTransaction(transactionHash)
+    return tx.from;
+  }
 }
