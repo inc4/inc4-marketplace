@@ -60,4 +60,14 @@ export class Marketplace {
     return ethers.ContractFactory.getContract(address, abi, this.contract.signer);
   }
 
+
+  async dataRead(): Promise<any> {
+    return await MarketplaceData.find({}).exec()
+  }
+
+  async dataWrite(data: Object) {
+    await MarketplaceData.updateOne({}, data).exec()
+  }
+
+
 }

@@ -38,3 +38,8 @@ export const Order = model('Order', new Schema({
   signature: String
 }));
 
+
+export const MarketplaceData = model('MarketplaceData', new Schema({
+  lastBlock: Number,
+}));
+

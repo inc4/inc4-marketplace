@@ -74,15 +74,21 @@ export class EventLogger {
 
   ]
 
-  async getEvents(fromBlock: BlockTag) {
-      for (let e of this.events) {
-        const logs = await this.m.contract.provider.getLogs({
-          fromBlock: fromBlock,  // todo last processed block
-          topics: [e.encode()]
-        });
-        for (let l of logs)
-          await e.onEvent(l)
-      }
+  async getEvents(fromBlock?: BlockTag) {
+    let newLastBlock = 0;
+
+    for (let e of this.events) {
+      const logs = await this.m.contract.provider.getLogs({
+        fromBlock: fromBlock ?? (await this.m.dataRead()).lastBlock,
+        topics: [e.encode()]
+      });
+      for (let l of logs)
+        await e.onEvent(l)
+      newLastBlock = Math.max(logs[logs.length - 1]?.blockNumber ?? 0, newLastBlock);
+    }
+
+    await this.m.dataWrite({lastBlock: newLastBlock})
+
   }
 
   async listenEvents() {
