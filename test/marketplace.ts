@@ -4,10 +4,8 @@ import chai from "chai";
 import {Marketplace} from "../lib/marketplace";
 import chaiAsPromised from "chai-as-promised";
 import {OrderFront, OrderPartFront, TokenType} from "../lib/types/common";
-import {EventLogger} from "../lib/event_logger";
 import amongus from "mongoose";
-import {Order, TokenContract} from "../lib/types/mongo";
-import {chains} from "../lib/config";
+import {Order, TokensCollection} from "../lib/types/mongo";
 
 chai.should();
 chai.use(chaiAsPromised);
@@ -45,7 +43,7 @@ describe("Marketplace", () => {
   beforeEach(async () => {
     await deployments.fixture(["mocks", "marketplace"]); // reset contracts state
     marketplace.eventLogger.removeListeners();
-    await TokenContract.deleteMany({});
+    await TokensCollection.deleteMany({});
     await Order.deleteMany({});
   });
 
@@ -55,34 +53,30 @@ describe("Marketplace", () => {
     await mock721.mint(owner);
     await mock20.mint(user, 200);
 
-    await marketplace.eventLogger.listenEvents();
-
-    await sleep(5000);
+    await marketplace.eventLogger.getEvents('earliest');
 
     // create order
 
-    let [tokens721, tokens20] = await marketplace.getTokens();
-    // owner of 721 = owner;   owner of 20 = user
-
-    expect(tokens721.tokens.length).eq(1);
-    expect(tokens721.tokens[0]).includes({tokenId: "0", owner: owner, quantity: 1});
-    expect(tokens20.tokens.length).eq(1);
-    expect(tokens20.tokens[0]).includes({tokenId: "0", owner: user, quantity: 200});
+    let [tokens721] = await marketplace.getTokens();
+    let tokens721_without_garbage = JSON.parse(JSON.stringify(tokens721));
+    expect(tokens721_without_garbage).deep.includes({
+      tokenType: 2, contractAddress: mock721.address, owner: owner,
+      tokens: [{tokenId: "0", owners: {[owner]: 1}}],
+    });
 
 
     const order = new OrderFront(
-      42,
-      new OrderPartFront(TokenType.ERC721, tokens721.address, tokens721.tokens[0].tokenId, owner, 1, endtime(100)),
-      new OrderPartFront(TokenType.ERC20, tokens20.address, "0", user, 200, endtime(100)),
+      new OrderPartFront(TokenType.ERC721, tokens721.contractAddress, tokens721.tokens[0].tokenId, owner, 1, endtime(100)),
+      new OrderPartFront(TokenType.ERC20, mock20.address, "0", user, 200, endtime(100)),
       Date.now()
     )
     order.setSignature(await ownerS.signMessage(order.toMessage()))
 
 
     await marketplace.createOrder(order).should.be.rejected;
+
     await mock721.approve(marketplace.contract.address, 0);
     await mock20.connect(userS).approve(marketplace.contract.address, 200)
-
 
     await marketplace.createOrder(order)
 
@@ -93,18 +87,17 @@ describe("Marketplace", () => {
     // frontend will check it before transaction
     await marketplace.checkApprove(order.right);
 
-    await marketplace.contract.connect(userS).acceptOrder(order.toCallData());
+    await expect(() => marketplace.contract.connect(userS).acceptOrder(order.toCallData())).to
+      .changeTokenBalances(mock20, [userS, ownerS, marketplace.contract], [-200, 195, 5]);
 
+    await marketplace.eventLogger.getEvents();
 
-    await sleep(4000);
-
-    [tokens721, tokens20] = await marketplace.getTokens();
-
-    expect(tokens721.tokens[0]).includes({tokenId: "0", owner: owner, quantity: 0});
-    expect(tokens721.tokens[1]).includes({tokenId: "0", owner: user, quantity: 1});
-    expect(tokens20.tokens[0]).includes({tokenId: "0", owner: user, quantity: 0});
-    expect(tokens20.tokens[1]).includes({tokenId: "0", owner: owner, quantity: 195});
-    expect(tokens20.tokens[2]).includes({tokenId: "0", owner: marketplace.contract.address, quantity: 5});
+    [tokens721] = await marketplace.getTokens();
+    tokens721_without_garbage = JSON.parse(JSON.stringify(tokens721));
+    expect(tokens721_without_garbage).deep.includes({
+      tokenType: 2, contractAddress: mock721.address, owner: owner,
+      tokens: [{tokenId: "0", owners: {[owner]: 0, [user]: 1}}],
+    });
 
   });
 
@@ -112,8 +105,4 @@ describe("Marketplace", () => {
 
 const endtime = (d: number) => {
   return Math.round(Date.now() / 1000) + d
-}
-
-function sleep(t: number): Promise<void> {
-  return new Promise(r => setTimeout(r, t))
 }

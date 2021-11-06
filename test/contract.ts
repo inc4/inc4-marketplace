@@ -51,7 +51,6 @@ describe("Contract", () => {
     expect(await mock721.ownerOf(0)).eq(owner);
 
     const order = new OrderFront(
-      42,
       new OrderPartFront(TokenType.ERC721, mock721.address, "0", owner, 1, endtime(100)),
       new OrderPartFront(TokenType.ERC20, mock20.address, "0", user, 200, endtime(100)),
       Date.now()
@@ -69,7 +68,6 @@ describe("Contract", () => {
     expect(await mock721.ownerOf(0)).eq(owner);
 
     const order = new OrderFront(
-      42,
       new OrderPartFront(TokenType.ERC721, mock721.address, "0", owner, 1, endtime(100)),
       new OrderPartFront(TokenType.ETH, "0x0000000000000000000000000000000000000000", "0", user, 200, endtime(100)),
       Date.now()
@@ -88,7 +86,6 @@ describe("Contract", () => {
     expect(await mock1155.balanceOf(user, 0)).eq(1);
 
     const order = new OrderFront(
-      42,
       new OrderPartFront(TokenType.ERC721, mock721.address, "0", owner, 1, endtime(100)),
       new OrderPartFront(TokenType.ERC1155, mock1155.address, "0", user, 1, endtime(100)),
       Date.now()
@@ -109,7 +106,6 @@ describe("Contract", () => {
   it('endtime', async () => {
 
     const order = new OrderFront(
-      42,
       new OrderPartFront(TokenType.ERC721, mock721.address, "0", owner, 1, endtime(100)),
       new OrderPartFront(TokenType.ERC20, mock20.address, "0", user, 200, endtime(-5)),
       Date.now()

@@ -6,8 +6,8 @@ import chaiAsPromised from "chai-as-promised";
 import fetch from "node-fetch";
 import {OrderFront, OrderPartFront, TokenType} from "../lib/types/common";
 import amongus from "mongoose";
-import {Order, TokenContract} from "../lib/types/mongo";
-import {start} from "../lib/api";
+import {Order, TokensCollection} from "../lib/types/mongo";
+import {start} from "../lib/api/api";
 
 chai.should();
 chai.use(chaiAsPromised);
@@ -48,7 +48,7 @@ describe("Api", function() {
   beforeEach(async () => {
     await deployments.fixture(["mocks", "marketplace"]); // reset contracts state
     marketplace.eventLogger.removeListeners()
-    await TokenContract.deleteMany({});
+    await TokensCollection.deleteMany({});
     await Order.deleteMany({});
   });
 
@@ -60,7 +60,7 @@ describe("Api", function() {
     await mock721.approve(marketplace.contract.address, 0);
     await mock20.connect(userS).approve(marketplace.contract.address, 200)
 
-    await marketplace.eventLogger.listenEvents();
+    await marketplace.eventLogger.getEvents('earliest');
 
     await start(marketplace);
     const url = "http://localhost:8080"
@@ -79,7 +79,6 @@ describe("Api", function() {
 
 
     const order1 = new OrderFront(
-      42,
       new OrderPartFront(TokenType.ERC721, tokens721.address, tokens721.tokens[0].tokenId, owner, 1, endtime(100)),
       new OrderPartFront(TokenType.ERC20, tokens20.address, "0", user, 200, endtime(100)),
       Date.now()
