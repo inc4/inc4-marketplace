@@ -16,4 +16,7 @@ contract nftPublic is ERC1155 {
         return super.isApprovedForAll(account, operator);
     }
 
+    function mint(address account, uint256 id, uint256 amount, bytes memory data) public {
+        _mint(account, id, amount, data);
+    }
 }
