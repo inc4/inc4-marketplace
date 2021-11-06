@@ -6,7 +6,7 @@
   "license": "MIT",
   "private": false,
   "scripts": {
-    "api": "hardhat run ./lib/api.ts",
+    "api": "ts-node ./lib/main.ts",
     "build": "hardhat compile",
     "deploy": "hardhat deploy --network rinkeby",
     "verify": "hardhat etherscan-verify --network rinkeby",
@@ -43,12 +43,15 @@
     "@types/mongoose": "^5.11.97",
     "dotenv": "^9.0.2",
     "ethereum-waffle": "^3.2.0",
+    "express-graphql": "^0.12.0",
+    "graphql": "^16.0.1",
     "hardhat": "^2.3.3",
     "hardhat-deploy": "^0.8.11",
     "hardhat-deploy-ethers": "0.3.0-beta.10",
     "ipfs-unixfs-importer": "^9.0.5",
     "mongoose": "^6.0.11",
     "openzeppelin-solidity": "^4.2.0",
+    "ts-mongoose": "^0.0.24",
     "ts-node": "^9.1.1",
     "typescript": "^4.2.4"
   }
