@@ -1,4 +1,4 @@
-import {ethers} from "hardhat";
+import {ethers} from "ethers";
 
 export enum TokenType {
   ETH,
@@ -38,22 +38,20 @@ export class OrderPartFront {
 }
 
 export class OrderFront {
-  chainId: number
   left: OrderPartFront
   right: OrderPartFront
   signature: string = ""
   nonce: number
 
 
-  constructor(chainId: number, left: OrderPartFront, right: OrderPartFront, nonce: number) {
-    this.chainId = chainId;
+  constructor(left: OrderPartFront, right: OrderPartFront, nonce: number) {
     this.left = left;
     this.right = right;
     this.nonce = nonce;
   }
 
   static fromJson(obj: OrderFront): OrderFront {
-    const order = new OrderFront(obj.chainId, OrderPartFront.fromJson(obj.left), OrderPartFront.fromJson(obj.right), obj.nonce)
+    const order = new OrderFront(OrderPartFront.fromJson(obj.left), OrderPartFront.fromJson(obj.right), obj.nonce)
     order.setSignature(obj.signature)
     return order
   }
