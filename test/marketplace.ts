@@ -61,7 +61,11 @@ describe("Marketplace", () => {
     let tokens721_without_garbage = JSON.parse(JSON.stringify(tokens721));
     expect(tokens721_without_garbage).deep.includes({
       tokenType: 2, contractAddress: mock721.address, owner: owner,
-      tokens: [{tokenId: "0", owners: {[owner]: 1}}],
+      tokens: [{
+        tokenId: "0",
+        metadata: {},
+        owners: {[owner]: 1}
+      }]
     });
 
 
@@ -96,7 +100,11 @@ describe("Marketplace", () => {
     tokens721_without_garbage = JSON.parse(JSON.stringify(tokens721));
     expect(tokens721_without_garbage).deep.includes({
       tokenType: 2, contractAddress: mock721.address, owner: owner,
-      tokens: [{tokenId: "0", owners: {[owner]: 0, [user]: 1}}],
+      tokens: [{
+        tokenId: "0",
+        metadata: {},
+        owners: {[owner]: 0, [user]: 1}
+      }],
     });
 
   });

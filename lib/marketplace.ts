@@ -1,5 +1,5 @@
 import {Contract, ethers} from "ethers";
-import abi from "./abi.json";
+import {abi} from "./abi";
 import {OrderFront, OrderPartFront, TokenType} from "./types/common";
 import {MarketplaceData, Order, TokensCollection} from "./types/mongo";
 import {EventLogger} from "./event_logger";

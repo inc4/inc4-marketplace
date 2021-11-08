@@ -3,6 +3,9 @@ import {Marketplace} from "./marketplace";
 import {TokensCollection} from "./types/mongo";
 import {TokenType} from "./types/common";
 import {BlockTag, Log} from "@ethersproject/abstract-provider/src.ts/index";
+import fetch from "node-fetch";
+import {expect} from "chai";
+
 
 
 const interfaceId: { [iid: string]: TokenType } = {
@@ -12,7 +15,13 @@ const interfaceId: { [iid: string]: TokenType } = {
 }
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
-
+const IPFS_GATEWAYS = [
+  "https://cloudflare-ipfs.com/",
+  "https://ipfs.io/",
+  "https://ipfs.infura.io/",
+  "https://ipfs.sloppyta.co/",
+  "https://ipfs.2read.net/",
+]
 
 class Event {
   name: string
@@ -52,6 +61,9 @@ export class EventLogger {
   }
 
   events = [
+    // todo on uri change event
+
+
     // erc721 (and erc20)
     new Event('Transfer', ['address', 'address', 'uint256'],
       async (log, a) => {
@@ -149,6 +161,7 @@ export class EventLogger {
           $push: {
             tokens: {
               tokenId: tokenId.toString(),
+              metadata: await this.getMetadata(collection, tokenId),
               owners: {[user]: Number(valueD)},
             }
           }
@@ -172,5 +185,28 @@ export class EventLogger {
   private async getTxFrom(transactionHash: string): Promise<string> {
     const tx = await this.m.contract.provider.getTransaction(transactionHash)
     return tx.from;
+  }
+
+  private async getMetadata(collection: any, tokenId: bigint): Promise<object> {
+    const contract = this.m.getContractCaller(collection.contractAddress);
+    let uri: string;
+
+    if (collection.tokenType == TokenType.ERC721)
+      uri = await contract.tokenURI(tokenId)
+    else if (collection.tokenType == TokenType.ERC1155)
+      uri = (await contract.uri(tokenId)).replace('\{id\}', tokenId)
+    else
+      throw "Wrong tokenType"
+
+    if (uri.startsWith('ipfs://'))
+      uri = uri.replace('ipfs://', IPFS_GATEWAYS[0])  // todo round-robin, retry on error
+
+    try {
+      return await fetch(uri)
+    } catch (e) {
+      console.error(e)
+      return {}
+    }
+
   }
 }
