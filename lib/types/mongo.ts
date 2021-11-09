@@ -46,9 +46,11 @@ export const MarketplaceData = model('MarketplaceData', new Schema({
 }));
 
 /**
- * Schema based on https://docs.opensea.io/docs/metadata-standards
+ * Opensea docs: https://docs.opensea.io/docs/metadata-standards
+ * ERC1155: https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1155.md
+ * ERC721: https://github.com/ethereum/EIPs/blob/master/EIPS/eip-721.md
  */
-const genericTokenSchema = {
+export const Metadata = model('Metadata', new Schema({
   name: String,
   description: String,
   image: String,
@@ -66,23 +68,14 @@ const genericTokenSchema = {
       value: String // String | Number
     }],
   },
-};
-
-/**
- * ERC721 schema based on https://github.com/ethereum/EIPs/blob/master/EIPS/eip-721.md
- */
-export const ERC721 = model('ERC721', new Schema({...genericTokenSchema}));
-
-/**
- * ERC1155 schema based on https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1155.md
- */
-export const ERC1155 = model('ERC1155', new Schema({
-  ...genericTokenSchema,
-  decimals: Number,
+  decimals: { type: Number, required: false },
   localization: {
-    uri: String,
-    default: String,
-    locales: [String]
+    required: false,
+    type: {
+      uri: String,
+      default: String,
+      locales: [String],
+    },
   },
+  original: { type: String, required: false }
 }));
-
