@@ -4,8 +4,7 @@ import {TokensCollection} from "./types/mongo";
 import {TokenType} from "./types/common";
 import {BlockTag, Log} from "@ethersproject/abstract-provider/src.ts/index";
 import fetch from "node-fetch";
-import {expect} from "chai";
-
+import {events} from "./abi"
 
 
 const interfaceId: { [iid: string]: TokenType } = {
@@ -24,30 +23,35 @@ const IPFS_GATEWAYS = [
 ]
 
 class Event {
-  name: string
-  args: string[]
-  callback: (log: Log, args: ReadonlyArray<any>) => Promise<void>
+  eventAbi: any
+  callback: (log: Log, result: ReadonlyMap<string, any>) => Promise<void>
+  args: { [k: string]: any[] } = {it: [], in: [], ut: [], un: []}  // indexed/unindexed * type/name
 
+  static abiCoder = new ethers.utils.AbiCoder;
 
-  constructor(name: string, args: string[], callback: (log: Log, args: ReadonlyArray<any>) => Promise<void>) {
-    this.name = name;
-    this.args = args;
+  constructor(eventAbi: any, callback: (log: Log, args: Readonly<any>) => Promise<void>) {
+    this.eventAbi = eventAbi;
     this.callback = callback;
+    for (let i of eventAbi.inputs) {
+      this.args[i.indexed ? 'in' : 'un'].push(i.name)
+      this.args[i.indexed ? 'it' : 'ut'].push(i.type)
+    }
   }
 
   encode() {
-    return ethers.utils.id(`${this.name}(${this.args.join(',')})`)
-  }
-
-  decode(values: any[], data: string): ReadonlyArray<any> {
-    const abiCoder = new ethers.utils.AbiCoder;
-    values = values.slice(1);
-    values.push(data)
-    return abiCoder.decode(this.args, ethers.utils.hexConcat(values));
+    const args = this.eventAbi.inputs.map((i: any) => i.type)
+    return ethers.utils.id(`${this.eventAbi.name}(${args})`)
   }
 
   async onEvent(log: Log) {
-    await this.callback(log, this.decode(log.topics, log.data))
+    if (log.topics.length - 1 != this.args.in.length) return;  // same event name and types but different indexes (ex: erc20 and erc721 Transfer(address, address, uint256) )
+    const parse = (names: string[], types: string[], values: any[]) => Event.abiCoder.decode(types, ethers.utils.hexConcat(values)).map((v, i) => result[names[i]] = v)
+    const result: any = {};
+    parse(this.args.in, this.args.it, log.topics.slice(1))
+    parse(this.args.un, this.args.ut, [log.data])
+
+    console.log("event", this.eventAbi.name, result)
+    await this.callback(log, result)
   }
 }
 
@@ -61,28 +65,24 @@ export class EventLogger {
   }
 
   events = [
-    // todo on uri change event
-
-
-    // erc721 (and erc20)
-    new Event('Transfer', ['address', 'address', 'uint256'],
-      async (log, a) => {
-        if (log.topics.length == 4) // erc721  ( 3 in erc20 )
-          await this.onTransfer(log, a[0], a[1], a[2].toBigInt(), 1n);
-      }),
+    // erc721
+    new Event(events.Transfer, async (log, result) => {
+      await this.onTransfer(log, result.from, result.to, result.tokenId.toBigInt(), 1n);
+    }),
 
     // erc1155
-    new Event('TransferSingle', ['address', 'address', 'address', 'uint256', 'uint256',],
-      async (log, a) => {
-        await this.onTransfer(log, a[1], a[2], a[3].toBigInt(), a[4].toBigInt());
-      }
-    ),
-    new Event('TransferBatch', ['address', 'address', 'address', 'uint256[]', 'uint256[]',],
-      async (log, a) => {
-        for (let i = 0; i < a[3]; i++) {
-          await this.onTransfer(log, a[1], a[2], a[3][i].toBigInt(), a[4][i].toBigInt());
-        }
-      })
+    new Event(events.TransferSingle, async (log, result) => {
+      await this.onTransfer(log, result.from, result.to, result.id.toBigInt(), result.value.toBigInt());
+    }),
+    new Event(events.TransferBatch, async (log, result) => {
+      for (let i = 0; i < result.ids.length; i++)
+        await this.onTransfer(log, result.from, result.to, result.ids[i].toBigInt(), result.values[i].toBigInt());
+    }),
+
+    // erc1155 change uri
+    new Event(events.URI, async (log, result) => {
+      await this.updateMetadataUri(log.address, result.id.toString(), result.value);
+    }),
 
   ]
 
@@ -113,9 +113,7 @@ export class EventLogger {
   }
 
 
-  async onTransfer(log: Log, from: string, to: string, tokenId: bigint, value: bigint) {
-    console.log(log.address, from, to, tokenId, value)
-
+  async onTransfer(log: Log, from: string, to: string, tokenId: string, value: bigint) {
     let collection = await TokensCollection.findOne({address: log.address}).exec();
     if (collection === null) {
       if (from !== ZERO_ADDRESS) throw "First contract transfer is not mint."
@@ -137,39 +135,49 @@ export class EventLogger {
     await this.updateToken(collection, to, tokenId, value);
   }
 
-  async updateToken(collection: any, user: string, tokenId: bigint, valueD: bigint) {
+  async updateToken(collection: any, user: string, tokenId: string, valueD: bigint) {
     if (user == ZERO_ADDRESS) return;
 
-    console.log(user, tokenId, Number(valueD))
     // todo in one call
-    const found = await TokensCollection.findOneAndUpdate(
-      {
-        contractAddress: collection.contractAddress,
-        'tokens.tokenId': tokenId.toString()
-      },
-      {
-        $inc: {[`tokens.$.owners.${user}`]: Number(valueD)},
-      }).exec();
+    const found = await TokensCollection.findOneAndUpdate({
+      contractAddress: collection.contractAddress,
+      'tokens.tokenId': tokenId.toString()
+    }, {
+      $inc: {[`tokens.$.owners.${user}`]: Number(valueD)},
+    }).exec();
 
     if (found === null) {
       console.log("new token")
-      await TokensCollection.updateOne(
-        {
-          contractAddress: collection.contractAddress
-        },
-        {
-          $push: {
-            tokens: {
-              tokenId: tokenId.toString(),
-              metadata: await this.getMetadata(collection, tokenId),
-              owners: {[user]: Number(valueD)},
-            }
+      const metadata_uri = await this.getMetadataUri(collection, tokenId)
+      await TokensCollection.updateOne({
+        contractAddress: collection.contractAddress
+      }, {
+        $push: {
+          tokens: {
+            tokenId: tokenId.toString(),
+            metadata_uri: metadata_uri,
+            metadata: await fetchMetadata(metadata_uri),
+            owners: {[user]: Number(valueD)},
           }
-        }).exec();
+        }
+      }).exec();
     }
-
-
   }
+
+
+  async updateMetadataUri(contractAddress: string, tokenId: string, newUri: string) {
+    newUri = newUri.replace('\{id\}', tokenId);
+    await TokensCollection.updateOne({
+      contractAddress: contractAddress,
+      'tokens.tokenId': tokenId
+    }, {
+      $set: {
+        'tokens.$.metadata_uri': newUri,
+        'tokens.$.metadata': await fetchMetadata(newUri),
+      }
+    }).exec();
+  }
+
 
   async getContractType(address: string): Promise<TokenType> {
     const contract = await this.m.getContractCaller(address);
@@ -187,26 +195,29 @@ export class EventLogger {
     return tx.from;
   }
 
-  private async getMetadata(collection: any, tokenId: bigint): Promise<object> {
+  private async getMetadataUri(collection: any, tokenId: string): Promise<string> {
     const contract = this.m.getContractCaller(collection.contractAddress);
-    let uri: string;
-
     if (collection.tokenType == TokenType.ERC721)
-      uri = await contract.tokenURI(tokenId)
-    else if (collection.tokenType == TokenType.ERC1155)
-      uri = (await contract.uri(tokenId)).replace('\{id\}', tokenId)
-    else
-      throw "Wrong tokenType"
+      return await contract.tokenURI(tokenId)
+    if (collection.tokenType == TokenType.ERC1155)
+      return (await contract.uri(tokenId)).replace('\{id\}', tokenId)
 
-    if (uri.startsWith('ipfs://'))
-      uri = uri.replace('ipfs://', IPFS_GATEWAYS[0])  // todo round-robin, retry on error
-
-    try {
-      return await fetch(uri)
-    } catch (e) {
-      console.error(e)
-      return {}
-    }
-
+    throw "Wrong tokenType"
   }
+
+}
+
+
+async function fetchMetadata(uri: string): Promise<object> {
+
+  if (uri.startsWith('ipfs://'))
+    uri = uri.replace('ipfs://', IPFS_GATEWAYS[0])  // todo round-robin, retry on error
+
+  try {
+    return await (await fetch(uri)).json()
+  } catch (e) {
+    console.log(uri)
+    console.error(e)
+  }
+  return {}
 }

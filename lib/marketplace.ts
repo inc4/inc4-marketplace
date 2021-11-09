@@ -1,5 +1,5 @@
 import {Contract, ethers} from "ethers";
-import {abi} from "./abi";
+import {calls} from "./abi";
 import {OrderFront, OrderPartFront, TokenType} from "./types/common";
 import {MarketplaceData, Order, TokensCollection} from "./types/mongo";
 import {EventLogger} from "./event_logger";
@@ -57,7 +57,7 @@ export class Marketplace {
   }
 
   getContractCaller(address: string): Contract {
-    return ethers.ContractFactory.getContract(address, abi, this.contract.signer);
+    return ethers.ContractFactory.getContract(address, calls, this.contract.signer);
   }
 
 
