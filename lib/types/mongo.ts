@@ -45,25 +45,44 @@ export const MarketplaceData = model('MarketplaceData', new Schema({
   lastBlock: Number,
 }));
 
-/* 
- * ERC721 schema based on 
- * - https://docs.opensea.io/docs/metadata-standards
- * - https://github.com/ethereum/EIPs/blob/master/EIPS/eip-721.md
+/**
+ * Schema based on https://docs.opensea.io/docs/metadata-standards
  */
-export const ERC721 = model('ERC721', new Schema({
+const genericTokenSchema = {
   name: String,
   description: String,
   image: String,
-  external_uri: {
-    required: false,
-    type: String
-  },
+  external_url: String,
+  image_data: { type: String, required: false },
+  background_color: { type: String, required: false },
+  animation_url: { type: String, required: false },
+  youtube_url: { type: String, required: false },
   attributes: {
     required: false,
+    alias: "properties",
     type: [{
       trait_type: { type: String, required: false },
       display_type: { type: String, required: false },
       value: String // String | Number
-    }]
-  }
+    }],
+  },
+};
+
+/**
+ * ERC721 schema based on https://github.com/ethereum/EIPs/blob/master/EIPS/eip-721.md
+ */
+export const ERC721 = model('ERC721', new Schema({...genericTokenSchema}));
+
+/**
+ * ERC1155 schema based on https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1155.md
+ */
+export const ERC1155 = model('ERC1155', new Schema({
+  ...genericTokenSchema,
+  decimals: Number,
+  localization: {
+    uri: String,
+    default: String,
+    locales: [String]
+  },
 }));
+
