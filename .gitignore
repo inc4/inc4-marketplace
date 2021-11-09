@@ -118,6 +118,9 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
+# pnpm lock file
+pnpm-lock.yaml
+
 ### Solidity ###
 artifacts/
 cache/
