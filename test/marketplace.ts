@@ -20,6 +20,7 @@ describe("Marketplace", () => {
 
   let mock20: Contract;
   let mock721: Contract;
+  let mock1155: Contract;
 
   let marketplace: Marketplace;
 
@@ -32,6 +33,7 @@ describe("Marketplace", () => {
 
     mock20 = await ethers.getContract("mockERC20", ownerS);
     mock721 = await ethers.getContract("mockERC721", ownerS);
+    mock1155 = await ethers.getContract("mockERC1155", ownerS);
 
     const marketplaceContract = await ethers.getContract("marketplace", ownerS);
     marketplace = new Marketplace(marketplaceContract);
@@ -63,6 +65,7 @@ describe("Marketplace", () => {
       tokenType: 2, contractAddress: mock721.address, owner: owner,
       tokens: [{
         tokenId: "0",
+        metadata_uri: "http://localhost/0",
         metadata: {},
         owners: {[owner]: 1}
       }]
@@ -102,14 +105,55 @@ describe("Marketplace", () => {
       tokenType: 2, contractAddress: mock721.address, owner: owner,
       tokens: [{
         tokenId: "0",
+        metadata_uri: "http://localhost/0",
         metadata: {},
         owners: {[owner]: 0, [user]: 1}
+      }],
+    });
+
+
+  });
+
+
+  it('change uri', async () => {
+    await mock1155.mint(user, 0, 1, 0);
+    await marketplace.eventLogger.getEvents('earliest');
+    let [tokens] = await marketplace.getTokens();
+    let tokens_without_garbage = JSON.parse(JSON.stringify(tokens));
+    expect(tokens_without_garbage).deep.includes({
+      tokenType: 3, contractAddress: mock1155.address, owner: owner,
+      tokens: [{
+        tokenId: "0",
+        metadata_uri: 'http://localhost/',
+        metadata: {},
+        owners: {[user]: 1}
+      }],
+    });
+
+    await mock1155.changeUri('https://arweave.net/fEqLa01_uQaV6tRytDbX2tS7A1QwUUVdLCyqMKGdAQ4', 0)
+    await marketplace.eventLogger.getEvents();
+
+    [tokens] = await marketplace.getTokens();
+    tokens_without_garbage = JSON.parse(JSON.stringify(tokens));
+    expect(tokens_without_garbage).deep.includes({
+      tokenType: 3, contractAddress: mock1155.address, owner: owner,
+      tokens: [{
+        tokenId: "0",
+        metadata_uri: 'https://arweave.net/fEqLa01_uQaV6tRytDbX2tS7A1QwUUVdLCyqMKGdAQ4',
+        metadata: {
+          attributes: [],
+          description: "The survival adventure, where only one team gets the right to compete further. Click on the picture to open the full image.\n\nCollection: Storyline\nType: Story\nRarity: Common (1/10)",
+          image_url: "https://arweave.net/qMrE1t2-FdttwLi5FKJAkyWId0PdrkOF5qqvxpW_XI0",
+          name: "WePlay Clutch Island - Studio (1/10)",
+        },
+        owners: {[user]: 1}
       }],
     });
 
   });
 
 });
+
 
 const endtime = (d: number) => {
   return Math.round(Date.now() / 1000) + d

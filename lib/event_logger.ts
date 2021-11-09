@@ -79,6 +79,10 @@ export class EventLogger {
         await this.onTransfer(log, result.from, result.to, result.ids[i].toBigInt(), result.values[i].toBigInt());
     }),
 
+    // erc1155 change uri
+    new Event(events.URI, async (log, result) => {
+      await this.updateMetadataUri(log.address, result.id.toString(), result.value);
+    }),
 
   ]
 
@@ -144,19 +148,36 @@ export class EventLogger {
 
     if (found === null) {
       console.log("new token")
+      const metadata_uri = await this.getMetadataUri(collection, tokenId)
       await TokensCollection.updateOne({
         contractAddress: collection.contractAddress
       }, {
         $push: {
           tokens: {
             tokenId: tokenId.toString(),
-            metadata: await this.getMetadata(collection, tokenId),
+            metadata_uri: metadata_uri,
+            metadata: await fetchMetadata(metadata_uri),
             owners: {[user]: Number(valueD)},
           }
         }
       }).exec();
     }
   }
+
+
+  async updateMetadataUri(contractAddress: string, tokenId: string, newUri: string) {
+    newUri = newUri.replace('\{id\}', tokenId);
+    await TokensCollection.updateOne({
+      contractAddress: contractAddress,
+      'tokens.tokenId': tokenId
+    }, {
+      $set: {
+        'tokens.$.metadata_uri': newUri,
+        'tokens.$.metadata': await fetchMetadata(newUri),
+      }
+    }).exec();
+  }
+
 
   async getContractType(address: string): Promise<TokenType> {
     const contract = await this.m.getContractCaller(address);
@@ -174,26 +195,29 @@ export class EventLogger {
     return tx.from;
   }
 
-  private async getMetadata(collection: any, tokenId: bigint): Promise<object> {
+  private async getMetadataUri(collection: any, tokenId: string): Promise<string> {
     const contract = this.m.getContractCaller(collection.contractAddress);
-    let uri: string;
-
     if (collection.tokenType == TokenType.ERC721)
-      uri = await contract.tokenURI(tokenId)
-    else if (collection.tokenType == TokenType.ERC1155)
-      uri = (await contract.uri(tokenId)).replace('\{id\}', tokenId)
-    else
-      throw "Wrong tokenType"
+      return await contract.tokenURI(tokenId)
+    if (collection.tokenType == TokenType.ERC1155)
+      return (await contract.uri(tokenId)).replace('\{id\}', tokenId)
 
-    if (uri.startsWith('ipfs://'))
-      uri = uri.replace('ipfs://', IPFS_GATEWAYS[0])  // todo round-robin, retry on error
-
-    try {
-      return await fetch(uri)
-    } catch (e) {
-      console.error(e)
-      return {}
-    }
-
+    throw "Wrong tokenType"
   }
+
+}
+
+
+async function fetchMetadata(uri: string): Promise<object> {
+
+  if (uri.startsWith('ipfs://'))
+    uri = uri.replace('ipfs://', IPFS_GATEWAYS[0])  // todo round-robin, retry on error
+
+  try {
+    return await (await fetch(uri)).json()
+  } catch (e) {
+    console.log(uri)
+    console.error(e)
+  }
+  return {}
 }

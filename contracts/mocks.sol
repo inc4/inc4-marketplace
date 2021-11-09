@@ -7,13 +7,17 @@ import "@openzeppelin/contracts/token/ERC20/presets/ERC20PresetMinterPauser.sol"
 
 contract mockERC1155 is ERC1155PresetMinterPauser {
 
-    constructor() ERC1155PresetMinterPauser("A") {
+    constructor() ERC1155PresetMinterPauser("http://localhost/") {
+    }
+
+    function changeUri(string memory uri, uint256 tokenId) public {
+        emit URI(uri, tokenId);
     }
 }
 
 contract mockERC721 is ERC721PresetMinterPauserAutoId {
 
-    constructor() ERC721PresetMinterPauserAutoId("A", "B", "C") {
+    constructor() ERC721PresetMinterPauserAutoId("A", "B", "http://localhost/") {
     }
 }
 

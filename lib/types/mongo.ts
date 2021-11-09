@@ -6,6 +6,7 @@ import {model, Schema} from 'mongoose';
 const TokenSchema = new Schema({
   tokenId: String,
 
+  metadata_uri: String,
   metadata: Map,
 
   owners: {type: Map, of: Number},
