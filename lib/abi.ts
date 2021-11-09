@@ -1,4 +1,4 @@
-export const abi = [
+export const calls = [
   {
     "name": "supportsInterface",
     "inputs": [{"internalType": "bytes4", "name": "interfaceId", "type": "bytes4"}],
@@ -51,5 +51,55 @@ export const abi = [
     "outputs": [{"internalType": "string", "name": "", "type": "string"}],
     "stateMutability": "view",
     "type": "function"
-  }
-]
+  },
+];
+
+export const events = {
+  TransferSingle: {
+    "name": "TransferSingle",
+    "anonymous": false,
+    "inputs": [
+      {"indexed": true, "internalType": "address", "name": "operator", "type": "address"},
+      {"indexed": true, "internalType": "address", "name": "from", "type": "address"},
+      {"indexed": true, "internalType": "address", "name": "to", "type": "address"},
+      {"indexed": false, "internalType": "uint256", "name": "id", "type": "uint256"},
+      {"indexed": false, "internalType": "uint256", "name": "value", "type": "uint256"}
+    ],
+    "type": "event"
+  },
+
+  TransferBatch: {
+    "name": "TransferBatch",
+    "anonymous": false,
+    "inputs": [
+      {"indexed": true, "internalType": "address", "name": "operator", "type": "address"},
+      {"indexed": true, "internalType": "address", "name": "from", "type": "address"},
+      {"indexed": true, "internalType": "address", "name": "to", "type": "address"},
+      {"indexed": false, "internalType": "uint256[]", "name": "ids", "type": "uint256[]"},
+      {"indexed": false, "internalType": "uint256[]", "name": "values", "type": "uint256[]"}
+    ],
+    "type": "event"
+  },
+
+  Transfer: {
+    "name": "Transfer",
+    "anonymous": false,
+    "inputs": [
+      {"indexed": true, "internalType": "address", "name": "from", "type": "address"},
+      {"indexed": true, "internalType": "address", "name": "to", "type": "address"},
+      {"indexed": true, "internalType": "uint256", "name": "tokenId", "type": "uint256"}
+    ],
+    "type": "event"
+  },
+
+
+  URI: {
+    "name": "URI",
+    "anonymous": false,
+    "inputs": [
+      {"indexed": false, "internalType": "string", "name": "value", "type": "string"},
+      {"indexed": true, "internalType": "uint256", "name": "id", "type": "uint256"}
+    ],
+    "type": "event"
+  },
+}
