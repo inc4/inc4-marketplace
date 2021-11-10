@@ -1,16 +1,31 @@
-import {model, Schema} from 'mongoose';
+import { model, Schema } from 'mongoose';
 
 // todo https://mongoosejs.com/docs/typescript.html
+
+
+/**
+ * Opensea docs: https://docs.opensea.io/docs/metadata-standards
+ * ERC1155: https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1155.md
+ * ERC721: https://github.com/ethereum/EIPs/blob/master/EIPS/eip-721.md
+ */
+export const Metadata = new Schema({
+  name: String,
+  description: String,
+  image: String,
+  media_url: String,
+  external_url: String,
+  background_color: String,
+}, { _id: false });
 
 
 const TokenSchema = new Schema({
   tokenId: String,
 
   metadata_uri: String,
-  metadata: Map,
+  metadata: Metadata,
 
-  owners: {type: Map, of: Number},
-}, {_id: false})
+  owners: { type: Map, of: Number },
+}, { _id: false })
 
 export const TokensCollection = model('TokensCollection', new Schema({
   contractAddress: String,
@@ -45,4 +60,3 @@ export const Order = model('Order', new Schema({
 export const MarketplaceData = model('MarketplaceData', new Schema({
   lastBlock: Number,
 }));
-

@@ -130,7 +130,7 @@ describe("Marketplace", () => {
       }],
     });
 
-    await mock1155.changeUri('https://arweave.net/fEqLa01_uQaV6tRytDbX2tS7A1QwUUVdLCyqMKGdAQ4', 0)
+    await mock1155.changeUri('https://testnets-api.opensea.io/api/v1/metadata/0x88B48F654c30e99bc2e4A1559b4Dcf1aD93FA656/55517153534380485272812148933649795490470480281686264073219081368668030894081', 0)
     await marketplace.eventLogger.getEvents();
 
     [tokens] = await marketplace.getTokens();
@@ -139,12 +139,11 @@ describe("Marketplace", () => {
       tokenType: 3, contractAddress: mock1155.address, owner: owner,
       tokens: [{
         tokenId: "0",
-        metadata_uri: 'https://arweave.net/fEqLa01_uQaV6tRytDbX2tS7A1QwUUVdLCyqMKGdAQ4',
+        metadata_uri: 'https://testnets-api.opensea.io/api/v1/metadata/0x88B48F654c30e99bc2e4A1559b4Dcf1aD93FA656/55517153534380485272812148933649795490470480281686264073219081368668030894081',
         metadata: {
-          attributes: [],
-          description: "The survival adventure, where only one team gets the right to compete further. Click on the picture to open the full image.\n\nCollection: Storyline\nType: Story\nRarity: Common (1/10)",
-          image_url: "https://arweave.net/qMrE1t2-FdttwLi5FKJAkyWId0PdrkOF5qqvxpW_XI0",
-          name: "WePlay Clutch Island - Studio (1/10)",
+          "name": "ASDASD",
+          "description": null,
+          "image": "https://lh3.googleusercontent.com/3gprPV915eDyTjQoUIqF0dgC1Zo0jFEhNArt2FZ7EXhhGv_gPZpmHY2Y7xQnVSjwOX4ki46WkxWmb_F3_vKJ9LHLOJRa4XQqoKPP",
         },
         owners: {[user]: 1}
       }],
