@@ -214,10 +214,18 @@ async function fetchMetadata(uri: string): Promise<object> {
     uri = uri.replace('ipfs://', IPFS_GATEWAYS[0])  // todo round-robin, retry on error
 
   try {
-    return await (await fetch(uri)).json()
+    return parseMetadata(await (await fetch(uri)).json())
   } catch (e) {
     console.log(uri)
     console.error(e)
   }
   return {}
+}
+
+async function parseMetadata(metadata: any) {
+  // opensea violates its own standard
+  if (metadata.external_link && !metadata.external_url)
+    metadata.external_url = metadata.pop('external_link')
+
+  return metadata
 }
