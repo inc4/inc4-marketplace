@@ -1,14 +1,12 @@
 import { Marketplace } from "../marketplace";
 import express from 'express'
 import bodyParser from 'body-parser'
-import amongus from "mongoose";
 import { OrderFront } from "../types/common";
 import { graphqlHTTP } from "express-graphql";
 import { schema } from "./schema";
 
 
 export async function start(marketplace: Marketplace) {
-  await amongus.connect('mongodb://root:example@localhost:27017/admin');
 
   const app = express()
   const jsonParser = bodyParser.json()

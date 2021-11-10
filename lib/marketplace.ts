@@ -62,11 +62,11 @@ export class Marketplace {
 
 
   async dataRead(): Promise<any> {
-    return await MarketplaceData.find({}).exec()
+    return await MarketplaceData.findOne({}).exec()
   }
 
   async dataWrite(data: Object) {
-    await MarketplaceData.updateOne({}, data).exec()
+    await MarketplaceData.updateOne({}, data, {upsert: true}).exec()
   }
 
 

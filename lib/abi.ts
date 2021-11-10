@@ -37,7 +37,7 @@ export const calls = [
     "type": "function"
   },
 
-  // ggt token metadata
+  // get token metadata
   {  // erc721
     "name": "tokenURI",
     "inputs": [{"internalType": "uint256", "name": "tokenId", "type": "uint256"}],
@@ -52,6 +52,36 @@ export const calls = [
     "stateMutability": "view",
     "type": "function"
   },
+
+  // check token standart
+  // erc 721
+  {
+    "name": "safeTransferFrom",
+    "inputs": [
+      {"internalType": "address", "name": "from", "type": "address"},
+      {"internalType": "address", "name": "to", "type": "address"},
+      {"internalType": "uint256", "name": "tokenId", "type": "uint256"}
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  // erc1155
+  {
+    "name": "safeTransferFrom",
+    "inputs": [
+      {"internalType": "address", "name": "from", "type": "address"},
+      {"internalType": "address", "name": "to", "type": "address"},
+      {"internalType": "uint256", "name": "id", "type": "uint256"},
+      {"internalType": "uint256", "name": "amount", "type": "uint256"},
+      {"internalType": "bytes", "name": "data", "type": "bytes"}
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+
+
 ];
 
 export const events = {

@@ -2,15 +2,14 @@ import {ethers} from "ethers";
 import {Marketplace} from "./marketplace";
 import {TokensCollection} from "./types/mongo";
 import {TokenType} from "./types/common";
-import {BlockTag, Log} from "@ethersproject/abstract-provider/src.ts/index";
+import {Log} from "@ethersproject/abstract-provider/src.ts/index";
 import fetch from "node-fetch";
 import {events} from "./abi"
 
 
-const interfaceId: { [iid: string]: TokenType } = {
-  "0xd9b67a26": TokenType.ERC1155,
-  "0x80ac58cd": TokenType.ERC721,
-  "0x01ffc9a7": TokenType.ERC20,
+const interfaceId: { [key in TokenType]?: string } = {
+  [TokenType.ERC1155]: "0xd9b67a26",
+  [TokenType.ERC721]: "0x80ac58cd",
 }
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
@@ -50,7 +49,7 @@ class Event {
     parse(this.args.in, this.args.it, log.topics.slice(1))
     parse(this.args.un, this.args.ut, [log.data])
 
-    console.log("event", this.eventAbi.name, result)
+    console.log("event", this.eventAbi.name, log.address, result)
     await this.callback(log, result)
   }
 }
@@ -60,52 +59,65 @@ export class EventLogger {
 
   m: Marketplace
 
-  constructor(marketplace: Marketplace) {
-    this.m = marketplace;
-  }
-
   events = [
     // erc721
     new Event(events.Transfer, async (log, result) => {
-      await this.onTransfer(log, result.from, result.to, result.tokenId.toBigInt(), 1n);
+      await this.onTransfer(log, TokenType.ERC721, result.from, result.to, result.tokenId.toBigInt(), 1n);
     }),
 
     // erc1155
     new Event(events.TransferSingle, async (log, result) => {
-      await this.onTransfer(log, result.from, result.to, result.id.toBigInt(), result.value.toBigInt());
+      await this.onTransfer(log, TokenType.ERC1155, result.from, result.to, result.id.toBigInt(), result.value.toBigInt());
     }),
     new Event(events.TransferBatch, async (log, result) => {
       for (let i = 0; i < result.ids.length; i++)
-        await this.onTransfer(log, result.from, result.to, result.ids[i].toBigInt(), result.values[i].toBigInt());
+        await this.onTransfer(log, TokenType.ERC1155, result.from, result.to, result.ids[i].toBigInt(), result.values[i].toBigInt());
     }),
 
     // erc1155 change uri
     new Event(events.URI, async (log, result) => {
       await this.updateMetadataUri(log.address, result.id.toString(), result.value);
     }),
-
   ]
+  eventsByHash: { [topic: string]: Event } = {}
 
-  async getEvents(fromBlock?: BlockTag) {
-    let newLastBlock = 0;
 
-    for (let e of this.events) {
-      const logs = await this.m.contract.provider.getLogs({
-        fromBlock: fromBlock ?? (await this.m.dataRead()).lastBlock,
-        topics: [e.encode()]
-      });
-      for (let l of logs)
-        await e.onEvent(l)
-      newLastBlock = Math.max(logs[logs.length - 1]?.blockNumber ?? 0, newLastBlock);
+  constructor(marketplace: Marketplace) {
+    this.m = marketplace;
+    for (let e of this.events) this.eventsByHash[e.encode()] = e
+  }
+
+  async getEvents(fromBlock?: number, blocks: number = 100): Promise<number> {
+    const fromBlock_ = fromBlock ?? (await this.m.dataRead()).lastBlock ?? 0;
+
+    for (let i = 0; i < 10; i++)
+      try {
+        const res = await this._getEvents(fromBlock_, fromBlock_ + blocks)
+        if (i != 0) console.log("Too many results until blocks > " + blocks)
+        return res
+      } catch (e: any) {
+        if (e?.error?.code == -32005) blocks = Math.floor(blocks / 3);  // result too big
+        else throw e;
+      }
+
+    return await this._getEvents(fromBlock_, blocks)
+  }
+
+
+  async _getEvents(fromBlock: number, toBlock: number): Promise<number> {
+    const logs = await this.m.contract.provider.getLogs({fromBlock, toBlock, topics: [Object.keys(this.eventsByHash)]});
+
+    for (let l of logs) {
+      await this.eventsByHash[l.topics[0]].onEvent(l)
+      await this.m.dataWrite({lastBlock: l.blockNumber})
     }
-
-    await this.m.dataWrite({lastBlock: newLastBlock})
-
+    await this.m.dataWrite({lastBlock: toBlock})
+    return toBlock
   }
 
   async listenEvents() {
-    for (let e of this.events)
-      this.m.contract.provider.on([e.encode()], l => e.onEvent(l))
+    this.m.contract.provider.on([Object.keys(this.eventsByHash)],
+      l => this.eventsByHash[l.topics[0]].onEvent(l))
   }
 
   removeListeners() {
@@ -113,11 +125,20 @@ export class EventLogger {
   }
 
 
-  async onTransfer(log: Log, from: string, to: string, tokenId: string, value: bigint) {
-    let collection = await TokensCollection.findOne({address: log.address}).exec();
+  async onTransfer(log: Log, tokenType: TokenType, from: string, to: string, tokenId: string, value: bigint) {
+    let collection = await TokensCollection.findOne({contractAddress: log.address}).exec();
+
     if (collection === null) {
-      if (from !== ZERO_ADDRESS) throw "First contract transfer is not mint."
-      const type = await this.getContractType(log.address);
+      if (!await this.isTokenTypeEq(log.address, tokenType)) {
+        // save with tokenType == undefined to skip this contract check in future
+        await new TokensCollection({contractAddress: log.address, tokenType: undefined}).save();
+        return;
+      }
+
+      if (from !== ZERO_ADDRESS) {
+        console.error("First contract transfer is not mint.")
+        return;
+      }
 
       // owner = first minter of the contract
       // may work wrong with lazy minting contracts
@@ -126,10 +147,15 @@ export class EventLogger {
 
       collection = await new TokensCollection({
         contractAddress: log.address,
-        tokenType: type.valueOf(),
+        tokenType: tokenType.valueOf(),
         owner: owner
       }).save();
     }
+    if (collection.tokenType === undefined) {
+      console.log("skip", log.address, "coz tokenType == undefined ")
+      return;
+    }
+
 
     await this.updateToken(collection, from, tokenId, -value);
     await this.updateToken(collection, to, tokenId, value);
@@ -179,14 +205,28 @@ export class EventLogger {
   }
 
 
-  async getContractType(address: string): Promise<TokenType> {
-    const contract = await this.m.getContractCaller(address);
-
-    for (let iid in interfaceId)
-      if (await contract.supportsInterface(iid))
-        return interfaceId[iid];
-
-    throw "Unknown contract type";
+  private async isTokenTypeEq(address: string, tokenType: TokenType): Promise<boolean> {
+    const contract = this.m.getContractCaller(address);
+    try {
+      return await contract.supportsInterface(interfaceId[tokenType]);
+    } catch (e: any) {
+      console.warn("supportsInterface() call failed on", address, e.reason ?? e);
+    }
+    try {
+      if (tokenType == TokenType.ERC721) {
+        // await contract.estimateGas['safeTransferFrom(address,address,uint256)'](ZERO_ADDRESS, ZERO_ADDRESS, 0);
+        await contract.tokenURI(0);
+        await contract.getApproved(0);
+      } else if (tokenType == TokenType.ERC1155) {
+        // await contract.estimateGas['safeTransferFrom(address,address,uint256,uint256,bytes)'](ZERO_ADDRESS, ZERO_ADDRESS, 0, 0, "");
+        await contract.uri(0);
+        await contract.isApprovedForAll(ZERO_ADDRESS, ZERO_ADDRESS);
+      }
+    } catch (e: any) {
+      console.warn("failed to call erc functions", address, e?.error?.reason ?? e);
+      return false
+    }
+    return true;
   }
 
 

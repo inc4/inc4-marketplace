@@ -3,6 +3,7 @@ import {ethers} from "ethers";
 import deployment from "../deployments/rinkeby/marketplace.json"
 import * as dotenv from "dotenv";
 import {start} from "./api/api";
+import amongus from "mongoose";
 
 async function main() {
   dotenv.config();
@@ -14,6 +15,18 @@ async function main() {
   const signer = new ethers.Wallet(process.env.PRIVATEKEY, provider)
   const contract = ethers.ContractFactory.getContract(deployment.address, deployment.abi, signer)
   const marketplace = new Marketplace(contract);
+
+  await amongus.connect('mongodb://root:example@localhost:27017/admin');
+
+  console.log('parsing events')
+  let block = undefined;
+  for (let i = 0; i < 1000; i++) {
+    block = await marketplace.eventLogger.getEvents(block, 10000)
+    console.log('parsed blocks up to ', block);
+  }
+
+  console.log('parsed')
+
   await start(marketplace);
 
 
