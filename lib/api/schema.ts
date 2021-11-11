@@ -32,8 +32,8 @@ const TokenType = new GraphQLObjectType({
 });
 
 
-const CollectionTokensType = new GraphQLObjectType({
-  name: "CollectionTokens",
+const TokensCollectionType = new GraphQLObjectType({
+  name: "TokensCollection",
   fields: () => ({
     contractAddress: {type: GraphQLString},
     tokenType: {type: GraphQLInt},
@@ -46,10 +46,11 @@ const CollectionTokensType = new GraphQLObjectType({
 const RootQuery = new GraphQLObjectType({
   name: 'RootQuery',
   fields: () => ({
-    collectionsTokens: {
-      type: new GraphQLList(CollectionTokensType),
+    tokensCollection: {
+      type: new GraphQLList(TokensCollectionType),
       resolve: () => {
-        return TokensCollection.find();
+        // todo if possible: filter owners by value != 0
+        return TokensCollection.find({tokenType: {$ne: null}});
       }
     }
   })
