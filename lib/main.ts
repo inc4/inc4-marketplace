@@ -18,14 +18,13 @@ async function main() {
 
   await amongus.connect('mongodb://root:example@localhost:27017/admin');
 
-  console.log('parsing events')
-  let block = undefined;
-  for (let i = 0; i < 1000; i++) {
-    block = await marketplace.eventLogger.getEvents(block, 10000)
-    console.log('parsed blocks up to ', block);
-  }
-
-  console.log('parsed')
+  // console.log('parsing events')
+  // let block = undefined;
+  // for (let i = 0; i < 1; i++) {
+  //   block = await marketplace.eventLogger.getEvents(block, 10000)
+  //   console.log('parsed blocks up to ', block);
+  // }
+  // console.log('parsed')
 
   await start(marketplace);
 
