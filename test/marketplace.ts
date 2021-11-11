@@ -55,7 +55,7 @@ describe("Marketplace", () => {
     await mock721.mint(owner);
     await mock20.mint(user, 200);
 
-    await marketplace.eventLogger.getEvents('earliest');
+    await marketplace.eventLogger.getEvents(0);
 
     // create order
 
@@ -117,7 +117,7 @@ describe("Marketplace", () => {
 
   it('change uri', async () => {
     await mock1155.mint(user, 0, 1, 0);
-    await marketplace.eventLogger.getEvents('earliest');
+    await marketplace.eventLogger.getEvents(0);
     let [tokens] = await marketplace.getTokens();
     let tokens_without_garbage = JSON.parse(JSON.stringify(tokens));
     expect(tokens_without_garbage).deep.includes({
