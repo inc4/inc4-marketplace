@@ -62,16 +62,16 @@ export class EventLogger {
   events = [
     // erc721
     new Event(events.Transfer, async (log, result) => {
-      await this.onTransfer(log, TokenType.ERC721, result.from, result.to, result.tokenId.toBigInt(), 1n);
+      await this.onTransfer(log, TokenType.ERC721, result.from, result.to, result.tokenId.toString(), 1);
     }),
 
     // erc1155
     new Event(events.TransferSingle, async (log, result) => {
-      await this.onTransfer(log, TokenType.ERC1155, result.from, result.to, result.id.toBigInt(), result.value.toBigInt());
+      await this.onTransfer(log, TokenType.ERC1155, result.from, result.to, result.id.toNumber(), result.value.toNumber());
     }),
     new Event(events.TransferBatch, async (log, result) => {
       for (let i = 0; i < result.ids.length; i++)
-        await this.onTransfer(log, TokenType.ERC1155, result.from, result.to, result.ids[i].toBigInt(), result.values[i].toBigInt());
+        await this.onTransfer(log, TokenType.ERC1155, result.from, result.to, result.ids[i].toNumber(), result.values[i].toNumber());
     }),
 
     // erc1155 change uri
@@ -125,7 +125,7 @@ export class EventLogger {
   }
 
 
-  async onTransfer(log: Log, tokenType: TokenType, from: string, to: string, tokenId: string, value: bigint) {
+  async onTransfer(log: Log, tokenType: TokenType, from: string, to: string, tokenId: string, quantity: number) {
     let collection = await TokensCollection.findOne({contractAddress: log.address}).exec();
 
     if (collection === null) {
@@ -157,22 +157,26 @@ export class EventLogger {
     }
 
 
-    await this.updateToken(collection, from, tokenId, -value);
-    await this.updateToken(collection, to, tokenId, value);
-  }
+    const transferEvent = {from, to, quantity, txHash: log.transactionHash}
 
-  async updateToken(collection: any, user: string, tokenId: string, valueD: bigint) {
-    if (user == ZERO_ADDRESS) return;
-
-    // todo in one call
     const found = await TokensCollection.findOneAndUpdate({
       contractAddress: collection.contractAddress,
-      'tokens.tokenId': tokenId.toString()
+      'tokens.tokenId': tokenId
     }, {
-      $inc: {[`tokens.$.owners.${user}`]: Number(valueD)},
+      $inc: {
+        [`tokens.$.owners.${from}`]: -quantity,
+        [`tokens.$.owners.${to}`]: quantity,
+      },
+      $push: {'tokens.$.events': transferEvent},
     }).exec();
 
     if (found === null) {
+
+      if (from !== ZERO_ADDRESS) {
+        console.error("First token transfer is not mint.")
+        return;
+      }
+
       console.log("new token")
       const metadata_uri = await this.getMetadataUri(collection, tokenId)
       await TokensCollection.updateOne({
@@ -180,10 +184,14 @@ export class EventLogger {
       }, {
         $push: {
           tokens: {
-            tokenId: tokenId.toString(),
+            tokenId: tokenId,
             metadata_uri: metadata_uri,
             metadata: await fetchMetadata(metadata_uri),
-            owners: {[user]: Number(valueD)},
+            owners: {
+              [from]: -quantity,
+              [to]: quantity,
+            },
+            events: [transferEvent],
           }
         }
       }).exec();

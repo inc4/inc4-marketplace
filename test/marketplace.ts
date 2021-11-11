@@ -11,6 +11,8 @@ chai.should();
 chai.use(chaiAsPromised);
 const expect = chai.expect;
 
+const zero = "0x0000000000000000000000000000000000000000"
+
 
 describe("Marketplace", () => {
   let ownerS: Signer;
@@ -67,7 +69,8 @@ describe("Marketplace", () => {
         tokenId: "0",
         metadata_uri: "http://localhost/0",
         metadata: {},
-        owners: {[owner]: 1}
+        owners: {[owner]: 1, [zero]: -1},
+        events: [{from: zero, to: owner, quantity: 1, txHash: tokens721_without_garbage.tokens[0].events[0].txHash}]
       }]
     });
 
@@ -107,7 +110,12 @@ describe("Marketplace", () => {
         tokenId: "0",
         metadata_uri: "http://localhost/0",
         metadata: {},
-        owners: {[owner]: 0, [user]: 1}
+        owners: {[owner]: 0, [user]: 1, [zero]: -1},
+        events: [
+          {from: zero, to: owner, quantity: 1, txHash: tokens721_without_garbage.tokens[0].events[0].txHash},
+          {from: owner, to: user, quantity: 1, txHash: tokens721_without_garbage.tokens[0].events[1].txHash}
+        ]
+
       }],
     });
 
@@ -126,7 +134,8 @@ describe("Marketplace", () => {
         tokenId: "0",
         metadata_uri: 'http://localhost/',
         metadata: {},
-        owners: {[user]: 1}
+        owners: {[user]: 1, [zero]: -1},
+        events: [{from: zero, to: user, quantity: 1, txHash: tokens_without_garbage.tokens[0].events[0].txHash}]
       }],
     });
 
@@ -141,11 +150,12 @@ describe("Marketplace", () => {
         tokenId: "0",
         metadata_uri: 'https://testnets-api.opensea.io/api/v1/metadata/0x88B48F654c30e99bc2e4A1559b4Dcf1aD93FA656/55517153534380485272812148933649795490470480281686264073219081368668030894081',
         metadata: {
-          "name": "ASDASD",
-          "description": null,
-          "image": "https://lh3.googleusercontent.com/3gprPV915eDyTjQoUIqF0dgC1Zo0jFEhNArt2FZ7EXhhGv_gPZpmHY2Y7xQnVSjwOX4ki46WkxWmb_F3_vKJ9LHLOJRa4XQqoKPP",
+          name: "ASDASD",
+          description: null,
+          image: "https://lh3.googleusercontent.com/3gprPV915eDyTjQoUIqF0dgC1Zo0jFEhNArt2FZ7EXhhGv_gPZpmHY2Y7xQnVSjwOX4ki46WkxWmb_F3_vKJ9LHLOJRa4XQqoKPP",
         },
-        owners: {[user]: 1}
+        owners: {[user]: 1, [zero]: -1},
+        events: [{from: zero, quantity: 1, to: user, txHash: tokens_without_garbage.tokens[0].events[0].txHash}]
       }],
     });
 

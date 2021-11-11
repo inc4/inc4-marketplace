@@ -18,6 +18,14 @@ export const Metadata = new Schema({
 }, { _id: false });
 
 
+const TokenTransferEventSchema = new Schema({
+  from: String,
+  to: String,
+  quantity: Number,
+  // datetime: Number,  // todo need to query blockchain to know event datetime, do we need this?
+  txHash: String,
+}, { _id: false });
+
 const TokenSchema = new Schema({
   tokenId: String,
 
@@ -25,6 +33,7 @@ const TokenSchema = new Schema({
   metadata: Metadata,
 
   owners: { type: Map, of: Number },
+  events: [TokenTransferEventSchema],
 }, { _id: false })
 
 export const TokensCollection = model('TokensCollection', new Schema({
@@ -55,6 +64,7 @@ export const Order = model('Order', new Schema({
   nonce: Number,
   signature: String
 }));
+
 
 
 export const MarketplaceData = model('MarketplaceData', new Schema({
