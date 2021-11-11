@@ -88,7 +88,7 @@ export class EventLogger {
   }
 
   async getEvents(fromBlock?: number, blocks: number = 100): Promise<number> {
-    const fromBlock_ = fromBlock ?? (await this.m.dataRead()).lastBlock ?? 0;
+    const fromBlock_ = fromBlock ?? (await this.m.dataRead())?.lastBlock ?? 0;
 
     for (let i = 0; i < 10; i++)
       try {
