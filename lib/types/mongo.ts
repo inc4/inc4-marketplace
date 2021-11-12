@@ -22,7 +22,7 @@ const TokenTransferEventSchema = new Schema({
   from: String,
   to: String,
   quantity: Number,
-  // datetime: Number,  // todo need to query blockchain to know event datetime, do we need this?
+  timestamp: Number,
   txHash: String,
 }, { _id: false });
 

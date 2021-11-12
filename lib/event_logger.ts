@@ -81,6 +81,8 @@ export class EventLogger {
   ]
   eventsByHash: { [topic: string]: Event } = {}
 
+  blocksTimestampCache: { [blockHash: string]: any } = {}
+
 
   constructor(marketplace: Marketplace) {
     this.m = marketplace;
@@ -157,7 +159,8 @@ export class EventLogger {
     }
 
 
-    const transferEvent = {from, to, quantity, txHash: log.transactionHash}
+    const timestamp = await this.getBlockTimestamp(log.blockHash);
+    const transferEvent = {from, to, quantity, timestamp, txHash: log.transactionHash};
 
     const found = await TokensCollection.findOneAndUpdate({
       contractAddress: collection.contractAddress,
@@ -240,8 +243,19 @@ export class EventLogger {
 
   private async getTxFrom(transactionHash: string): Promise<string> {
     const tx = await this.m.contract.provider.getTransaction(transactionHash)
+    this.blocksTimestampCache[tx.blockHash ?? ""] = tx.timestamp;
     return tx.from;
   }
+
+  private async getBlockTimestamp(blockHash: string): Promise<number> {
+    const t = this.blocksTimestampCache[blockHash]
+    if (t !== undefined) return t;
+
+    const block = await this.m.contract.provider.getBlock(blockHash);
+    this.blocksTimestampCache[blockHash] = block.timestamp;
+    return block.timestamp
+  }
+
 
   private async getMetadataUri(collection: any, tokenId: string): Promise<string> {
     const contract = this.m.getContractCaller(collection.contractAddress);
