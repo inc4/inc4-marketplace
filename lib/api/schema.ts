@@ -4,8 +4,9 @@ import {TokensCollection} from "../types/mongo";
 
 const TokenOwnersType = new GraphQLScalarType({
   name: "TokenOwners",
-  serialize(val) {
-    return val
+  serialize(val: any) {
+    for (let [key, value] of val) if (value == 0) val.delete(key);
+    return val;
   }
 });
 
@@ -49,15 +50,23 @@ const RootQuery = new GraphQLObjectType({
     tokensCollection: {
       type: new GraphQLList(TokensCollectionType),
       resolve: () => {
-        // todo if possible: filter owners by value != 0
         return TokensCollection
           .find({tokenType: {$ne: null}})
           .sort({'tokens.last_update': 1});
       }
-    }
+    },
+    getTokensByOwner: {
+      type: new GraphQLList(TokensCollectionType),
+      args: {owner: {type: GraphQLString}},
+      resolve: (_, args) => {
+        return TokensCollection.find({
+          tokenType: {$ne: null},
+          tokens: {$elemMatch: {[`owners.${args.owner}`]: {$gt: 0}}}
+        })
+      }
+    },
   })
 });
-
 
 export const schema = new GraphQLSchema({
   query: RootQuery,
