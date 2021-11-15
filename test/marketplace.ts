@@ -61,22 +61,21 @@ describe("Marketplace", () => {
 
     // create order
 
-    let [tokens721] = await marketplace.getTokens();
-    let tokens721_without_garbage = JSON.parse(JSON.stringify(tokens721));
-    expect(tokens721_without_garbage).deep.includes({
+    let [tokens] = await marketplace.getTokens();
+    isSubset(tokens, {
       tokenType: 2, contractAddress: mock721.address, owner: owner,
       tokens: [{
         tokenId: "0",
         metadata_uri: "http://localhost/0",
         metadata: {},
         owners: {[owner]: 1, [zero]: -1},
-        events: [{from: zero, to: owner, quantity: 1, txHash: tokens721_without_garbage.tokens[0].events[0].txHash}]
+        events: [{from: zero, to: owner, quantity: 1}]
       }]
     });
 
 
     const order = new OrderFront(
-      new OrderPartFront(TokenType.ERC721, tokens721.contractAddress, tokens721.tokens[0].tokenId, owner, 1, endtime(100)),
+      new OrderPartFront(TokenType.ERC721, tokens.contractAddress, tokens.tokens[0].tokenId, owner, 1, endtime(100)),
       new OrderPartFront(TokenType.ERC20, mock20.address, "0", user, 200, endtime(100)),
       Date.now()
     )
@@ -102,9 +101,8 @@ describe("Marketplace", () => {
 
     await marketplace.eventLogger.getEvents();
 
-    [tokens721] = await marketplace.getTokens();
-    tokens721_without_garbage = JSON.parse(JSON.stringify(tokens721));
-    expect(tokens721_without_garbage).deep.includes({
+    [tokens] = await marketplace.getTokens();
+    isSubset(tokens, {
       tokenType: 2, contractAddress: mock721.address, owner: owner,
       tokens: [{
         tokenId: "0",
@@ -112,13 +110,12 @@ describe("Marketplace", () => {
         metadata: {},
         owners: {[owner]: 0, [user]: 1, [zero]: -1},
         events: [
-          {from: zero, to: owner, quantity: 1, txHash: tokens721_without_garbage.tokens[0].events[0].txHash},
-          {from: owner, to: user, quantity: 1, txHash: tokens721_without_garbage.tokens[0].events[1].txHash}
+          {from: zero, to: owner, quantity: 1},
+          {from: owner, to: user, quantity: 1}
         ]
 
       }],
-    });
-
+    })
 
   });
 
@@ -127,15 +124,14 @@ describe("Marketplace", () => {
     await mock1155.mint(user, 0, 1, 0);
     await marketplace.eventLogger.getEvents(0);
     let [tokens] = await marketplace.getTokens();
-    let tokens_without_garbage = JSON.parse(JSON.stringify(tokens));
-    expect(tokens_without_garbage).deep.includes({
+    isSubset(tokens, {
       tokenType: 3, contractAddress: mock1155.address, owner: owner,
       tokens: [{
         tokenId: "0",
         metadata_uri: 'http://localhost/',
         metadata: {},
         owners: {[user]: 1, [zero]: -1},
-        events: [{from: zero, to: user, quantity: 1, txHash: tokens_without_garbage.tokens[0].events[0].txHash}]
+        events: [{from: zero, to: user, quantity: 1}]
       }],
     });
 
@@ -143,8 +139,7 @@ describe("Marketplace", () => {
     await marketplace.eventLogger.getEvents();
 
     [tokens] = await marketplace.getTokens();
-    tokens_without_garbage = JSON.parse(JSON.stringify(tokens));
-    expect(tokens_without_garbage).deep.includes({
+    isSubset(tokens, {
       tokenType: 3, contractAddress: mock1155.address, owner: owner,
       tokens: [{
         tokenId: "0",
@@ -155,7 +150,7 @@ describe("Marketplace", () => {
           image: "https://lh3.googleusercontent.com/3gprPV915eDyTjQoUIqF0dgC1Zo0jFEhNArt2FZ7EXhhGv_gPZpmHY2Y7xQnVSjwOX4ki46WkxWmb_F3_vKJ9LHLOJRa4XQqoKPP",
         },
         owners: {[user]: 1, [zero]: -1},
-        events: [{from: zero, quantity: 1, to: user, txHash: tokens_without_garbage.tokens[0].events[0].txHash}]
+        events: [{from: zero, quantity: 1, to: user}]
       }],
     });
 
@@ -166,4 +161,17 @@ describe("Marketplace", () => {
 
 const endtime = (d: number) => {
   return Math.round(Date.now() / 1000) + d
+}
+
+
+function isSubset (haystak: any, neeedle: any) {
+  const without_garbage = JSON.parse(JSON.stringify(haystak));
+  _isSubset(without_garbage, neeedle);
+}
+
+function _isSubset (haystak: any, neeedle: any, path: string = "given") {
+  for (let [k, v] of Object.entries(neeedle)) {
+    if (v && typeof v === 'object') _isSubset(haystak[k], v, `${path}.${k}`);
+    else expect(haystak[k]).eq(v, `${JSON.stringify(haystak, undefined, 2)} ${path}.${k}`)
+  }
 }
