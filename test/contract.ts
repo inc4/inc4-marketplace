@@ -1,12 +1,8 @@
 import {deployments, ethers, getNamedAccounts} from "hardhat";
 import type {Contract, Signer} from "ethers";
-import chai from "chai";
-import chaiAsPromised from "chai-as-promised";
 import {OrderFront, OrderPartFront, TokenType} from "../lib/types/common";
+import {expect, endtime} from "./utils";
 
-chai.should();
-chai.use(chaiAsPromised);
-const expect = chai.expect;
 
 
 describe("Contract", () => {
@@ -116,7 +112,3 @@ describe("Contract", () => {
   });
 
 });
-
-const endtime = (d: number) => {
-  return Math.round(Date.now() / 1000) + d
-}

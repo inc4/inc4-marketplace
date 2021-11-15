@@ -1,17 +1,11 @@
 import {deployments, ethers, getNamedAccounts} from "hardhat";
 import type {Contract, Signer} from "ethers";
-import chai from "chai";
 import {Marketplace} from "../lib/marketplace";
-import chaiAsPromised from "chai-as-promised";
 import {OrderFront, OrderPartFront, TokenType} from "../lib/types/common";
 import amongus from "mongoose";
 import {Order, TokensCollection} from "../lib/types/mongo";
+import {expect, endtime, isSubset, zero} from "./utils";
 
-chai.should();
-chai.use(chaiAsPromised);
-const expect = chai.expect;
-
-const zero = "0x0000000000000000000000000000000000000000"
 
 
 describe("Marketplace", () => {
@@ -157,21 +151,3 @@ describe("Marketplace", () => {
   });
 
 });
-
-
-const endtime = (d: number) => {
-  return Math.round(Date.now() / 1000) + d
-}
-
-
-function isSubset (haystak: any, neeedle: any) {
-  const without_garbage = JSON.parse(JSON.stringify(haystak));
-  _isSubset(without_garbage, neeedle);
-}
-
-function _isSubset (haystak: any, neeedle: any, path: string = "given") {
-  for (let [k, v] of Object.entries(neeedle)) {
-    if (v && typeof v === 'object') _isSubset(haystak[k], v, `${path}.${k}`);
-    else expect(haystak[k]).eq(v, `${JSON.stringify(haystak, undefined, 2)} ${path}.${k}`)
-  }
-}
