@@ -43,6 +43,11 @@ export async function removeFromQueue(cid: string): Promise<void> {
   await IpfsQueue.remove({cid}).exec();
 }
 
+export async function unpin(cid: string): Promise<void> {
+  await pinata.unpin(cid.replace("ipfs://", ""))
+  await removeFromQueue(cid);
+}
+
 
 async function unpinOld(): Promise<void> {
   const createTimeLt = Date.now() / 1000 - TIME_TO_UNPIN;
@@ -50,10 +55,6 @@ async function unpinOld(): Promise<void> {
   await Promise.all(olds.map((doc) => unpin(doc.cid)));
 }
 
-async function unpin(cid: string): Promise<void> {
-  await pinata.unpin(cid.replace("ipfs://", ""))
-  await removeFromQueue(cid);
-}
 
 async function uploadMetadata(data: Data): Promise<string> {
   const metadata = {
