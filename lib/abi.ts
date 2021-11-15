@@ -132,4 +132,11 @@ export const events = {
     ],
     "type": "event"
   },
+
+  MintWithIpfsCid: {
+    "name": "MintWithIpfsCid",
+    "anonymous": false,
+    "inputs": [{"indexed": false, "internalType": "string", "name": "cid", "type": "string"}],
+    "type": "event"
+  },
 }

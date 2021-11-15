@@ -5,6 +5,7 @@ import {TokenType} from "./types/common";
 import {Log} from "@ethersproject/abstract-provider/src.ts/index";
 import fetch from "node-fetch";
 import {events} from "./abi"
+import {removeFromQueue} from "./metadata";
 
 
 const interfaceId: { [key in TokenType]?: string } = {
@@ -14,11 +15,12 @@ const interfaceId: { [key in TokenType]?: string } = {
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 const IPFS_GATEWAYS = [
-  "https://cloudflare-ipfs.com/",
-  "https://ipfs.io/",
-  "https://ipfs.infura.io/",
-  "https://ipfs.sloppyta.co/",
-  "https://ipfs.2read.net/",
+  "https://gateway.pinata.cloud/ipfs/",
+  "https://cloudflare-ipfs.com/ipfs/",
+  "https://ipfs.io/ipfs/",
+  "https://ipfs.infura.io/ipfs/",
+  "https://ipfs.sloppyta.co/ipfs/",
+  "https://ipfs.2read.net/ipfs/",
 ]
 
 class Event {
@@ -78,6 +80,12 @@ export class EventLogger {
     new Event(events.URI, async (log, result) => {
       await this.updateMetadataUri(log.address, result.id.toString(), result.value);
     }),
+
+    // our public marketplace token minted
+    new Event(events.MintWithIpfsCid, async (log, result) => {
+      await removeFromQueue(result.cid);
+    }),
+
   ]
   eventsByHash: { [topic: string]: Event } = {}
 
@@ -110,6 +118,7 @@ export class EventLogger {
     const logs = await this.m.contract.provider.getLogs({fromBlock, toBlock, topics: [Object.keys(this.eventsByHash)]});
 
     for (let l of logs) {
+      // todo do this in db transaction (restore changed data if event processing fail)
       await this.eventsByHash[l.topics[0]].onEvent(l)
       await this.m.dataWrite({lastBlock: l.blockNumber})
     }
