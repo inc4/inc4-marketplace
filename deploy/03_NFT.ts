@@ -9,7 +9,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   await hre.deployments.deploy("nftPublic", {
     from: owner,
-    args: [marketplace.address, ""],
+    args: [marketplace.address],
     log: true,
   });
 

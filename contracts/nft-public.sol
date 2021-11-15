@@ -16,7 +16,7 @@ contract nftPublic is Context, ERC165, IERC1155 {
     mapping(uint256 => string) public uri;  // implicit uri() method
     address private marketplace;
 
-    event MintWithIpfsCid(string indexed cid);
+    event MintWithIpfsCid(string cid);
 
 
     constructor(address marketplace_) {
@@ -31,6 +31,7 @@ contract nftPublic is Context, ERC165, IERC1155 {
     function mint(uint256 amount, string memory cid) public {
         // todo commission
         _mint(msg.sender, totalSupply++, amount, "");
+        uri[totalSupply-1] = cid;
         emit MintWithIpfsCid(cid);
     }
 
