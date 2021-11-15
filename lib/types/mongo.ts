@@ -32,6 +32,7 @@ const TokenSchema = new Schema({
   metadata_uri: String,
   metadata: Metadata,
 
+  last_update: Number,
   owners: { type: Map, of: Number },
   events: [TokenTransferEventSchema],
 }, { _id: false })

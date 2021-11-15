@@ -50,7 +50,9 @@ const RootQuery = new GraphQLObjectType({
       type: new GraphQLList(TokensCollectionType),
       resolve: () => {
         // todo if possible: filter owners by value != 0
-        return TokensCollection.find({tokenType: {$ne: null}});
+        return TokensCollection
+          .find({tokenType: {$ne: null}})
+          .sort({'tokens.last_update': 1});
       }
     }
   })

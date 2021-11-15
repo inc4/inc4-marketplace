@@ -170,6 +170,7 @@ export class EventLogger {
         [`tokens.$.owners.${from}`]: -quantity,
         [`tokens.$.owners.${to}`]: quantity,
       },
+      $set: {'tokens.$.last_update': timestamp},
       $push: {'tokens.$.events': transferEvent},
     }).exec();
 
@@ -190,6 +191,7 @@ export class EventLogger {
             tokenId: tokenId,
             metadata_uri: metadata_uri,
             metadata: await fetchMetadata(metadata_uri),
+            last_update: timestamp,
             owners: {
               [from]: -quantity,
               [to]: quantity,
