@@ -71,3 +71,9 @@ export const Order = model('Order', new Schema({
 export const MarketplaceData = model('MarketplaceData', new Schema({
   lastBlock: Number,
 }));
+
+
+export const IpfsQueue = model('IpfsQueue', new Schema({
+  cid: String,
+  createTime: Number,
+}));
