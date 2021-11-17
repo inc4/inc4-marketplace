@@ -4,7 +4,7 @@ import {Marketplace} from "../lib/marketplace";
 import {OrderFront, OrderPartFront, TokenType} from "../lib/types/common";
 import amongus from "mongoose";
 import {Order, TokensCollection} from "../lib/types/mongo";
-import {expect, endtime, isSubset, zero} from "./utils";
+import {expect, endtime, isSubset, zero} from "./utils/utils";
 
 
 

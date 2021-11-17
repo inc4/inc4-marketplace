@@ -6,10 +6,10 @@ import {IpfsQueue, TokensCollection} from "../lib/types/mongo";
 import {unpin, upload} from "../lib/metadata";
 import * as fs from "fs";
 
-import {expect, isSubset, zero} from "./utils";
+import {expect, isSubset, zero} from "./utils/utils";
 
 
-describe("Marketplace", () => {
+describe("Ipfs", () => {
   let owner: string;
 
   let nftPublic: Contract;
@@ -38,7 +38,7 @@ describe("Marketplace", () => {
 
 
   it('mint', async () => {
-    const image = fs.createReadStream("./test/svin.jpg")
+    const image = fs.createReadStream("./test/utils/svin.jpg")
     const cid = await upload({name: "test", description: "test", image: image})
 
     const [ipfsQueue] = await IpfsQueue.find({});
