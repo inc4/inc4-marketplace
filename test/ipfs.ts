@@ -3,7 +3,7 @@ import type {Contract} from "ethers";
 import {Marketplace} from "../lib/marketplace";
 import amongus from "mongoose";
 import {IpfsQueue, TokensCollection} from "../lib/types/mongo";
-import {unpin, upload} from "../lib/metadata";
+import {unpin, upload} from "../lib/ipfs";
 import * as fs from "fs";
 
 import {expect, isSubset, zero} from "./utils/utils";

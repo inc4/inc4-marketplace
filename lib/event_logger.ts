@@ -5,7 +5,7 @@ import {TokenType} from "./types/common";
 import {Log} from "@ethersproject/abstract-provider/src.ts/index";
 import fetch from "node-fetch";
 import {events} from "./abi"
-import {removeFromQueue} from "./metadata";
+import {removeFromQueue} from "./ipfs";
 
 
 const interfaceId: { [key in TokenType]?: string } = {
