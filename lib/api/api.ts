@@ -14,7 +14,7 @@ export async function start(marketplace: Marketplace) {
   app.use(
     "/graphql",
     graphqlHTTP({
-      schema: schema,
+      schema: schema(marketplace),
       graphiql: true,
     }));
 
