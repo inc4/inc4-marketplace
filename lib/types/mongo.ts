@@ -62,7 +62,7 @@ export const Order = model('Order', new Schema({
   left: OrderPart,
   right: OrderPart,
 
-  nonce: Number,
+  createTime: Number,
   signature: String
 }));
 

@@ -71,7 +71,7 @@ describe("Marketplace", () => {
     const order = new OrderFront(
       new OrderPartFront(TokenType.ERC721, tokens.contractAddress, tokens.tokens[0].tokenId, owner, 1, endtime(100)),
       new OrderPartFront(TokenType.ERC20, mock20.address, "0", user, 200, endtime(100)),
-      Date.now()
+      endtime(0)
     )
     order.setSignature(await ownerS.signMessage(order.toMessage()))
 

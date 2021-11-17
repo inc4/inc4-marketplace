@@ -41,17 +41,17 @@ export class OrderFront {
   left: OrderPartFront
   right: OrderPartFront
   signature: string = ""
-  nonce: number
+  createTime: number
 
 
-  constructor(left: OrderPartFront, right: OrderPartFront, nonce: number) {
+  constructor(left: OrderPartFront, right: OrderPartFront, createTime: number) {
     this.left = left;
     this.right = right;
-    this.nonce = nonce;
+    this.createTime = createTime;
   }
 
   static fromJson(obj: OrderFront): OrderFront {
-    const order = new OrderFront(OrderPartFront.fromJson(obj.left), OrderPartFront.fromJson(obj.right), obj.nonce)
+    const order = new OrderFront(OrderPartFront.fromJson(obj.left), OrderPartFront.fromJson(obj.right), obj.createTime)
     order.setSignature(obj.signature)
     return order
   }
@@ -61,7 +61,7 @@ export class OrderFront {
   }
 
   toMessage() {
-    const messageParts = [this.left.pack(), this.right.pack(), ethers.utils.solidityPack(['uint256'], [this.nonce])]
+    const messageParts = [this.left.pack(), this.right.pack(), ethers.utils.solidityPack(['uint256'], [this.createTime])]
     return ethers.utils.arrayify(ethers.utils.keccak256(ethers.utils.hexConcat(messageParts)));
   };
 
@@ -75,7 +75,7 @@ export class OrderFront {
     return {
       left: this.left,
       right: this.right,
-      nonce: this.nonce,
+      nonce: this.createTime,
       sig: {r, s, v},
     };
   }
