@@ -97,24 +97,49 @@ export class EventLogger {
     for (let e of this.events) this.eventsByHash[e.encode()] = e
   }
 
-  async getEvents(fromBlock?: number, blocks: number = 100): Promise<number> {
+
+  async getFullHistory() {
+    console.log('parsing events')
+    const lastBlock = await this.m.contract.provider.getBlockNumber()
+    let fromBlock = undefined;  // undefined => start from last block saved in db
+    let blocksRange = 10000;  // start parse with huge range.
+    while (true) {
+      [fromBlock, blocksRange] = await this.getEvents(fromBlock, blocksRange)
+      // blocksRange decreases until infura can process the request
+      console.log('parsed blocks up to', fromBlock, ' blockRange =', blocksRange);
+      blocksRange *= 2;       // gradually increase blocksRange back
+
+      if (fromBlock >= lastBlock) {
+        // _getEvents() save fromBlock as lastBlock, but fromBlock >= lastBlock and we can miss some events
+        await this.m.dataWrite({lastBlock: lastBlock})
+        break;
+      }
+    }
+
+
+    console.log('parsed')
+  }
+
+
+  async getEvents(fromBlock?: number, blocks: number = 100): Promise<[number, number]> {
     const fromBlock_ = fromBlock ?? (await this.m.dataRead())?.lastBlock ?? 0;
 
     for (let i = 0; i < 10; i++)
       try {
         const res = await this._getEvents(fromBlock_, fromBlock_ + blocks)
-        if (i != 0) console.log("Too many results until blocks > " + blocks)
-        return res
+        return [res, blocks]
       } catch (e: any) {
         if (e?.error?.code == -32005) blocks = Math.floor(blocks / 3);  // result too big
-        else throw e;
+        else if (e.message === "Cannot read properties of null (reading 'forEach')") continue;
+        else
+          throw e;
       }
 
-    return await this._getEvents(fromBlock_, blocks)
+    return [await this._getEvents(fromBlock_, blocks), blocks]
   }
 
 
-  async _getEvents(fromBlock: number, toBlock: number): Promise<number> {
+  private async _getEvents(fromBlock: number, toBlock: number): Promise<number> {
     const logs = await this.m.contract.provider.getLogs({fromBlock, toBlock, topics: [Object.keys(this.eventsByHash)]});
 
     for (let l of logs) {
@@ -128,7 +153,10 @@ export class EventLogger {
 
   async listenEvents() {
     this.m.contract.provider.on([Object.keys(this.eventsByHash)],
-      l => this.eventsByHash[l.topics[0]].onEvent(l))
+      async (l) => {
+        await this.eventsByHash[l.topics[0]].onEvent(l);
+        await this.m.dataWrite({lastBlock: l.blockNumber});
+      });
   }
 
   removeListeners() {
@@ -136,7 +164,7 @@ export class EventLogger {
   }
 
 
-  async onTransfer(log: Log, tokenType: TokenType, from: string, to: string, tokenId: string, quantity: number) {
+  private async onTransfer(log: Log, tokenType: TokenType, from: string, to: string, tokenId: string, quantity: number) {
     let collection = await TokensCollection.findOne({contractAddress: log.address}).exec();
 
     if (collection === null) {
