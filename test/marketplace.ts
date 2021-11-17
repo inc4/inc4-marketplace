@@ -22,7 +22,7 @@ describe("Marketplace", () => {
 
 
   before(async () => {
-    await deployments.fixture(["mocks", "marketplace"]);
+    await deployments.fixture(["mocks", "marketplace", "nft"]);  // reset contracts to not receive their logs
     ({owner, user} = await getNamedAccounts());
     ownerS = await ethers.getSigner(owner);
     userS = await ethers.getSigner(user);

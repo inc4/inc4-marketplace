@@ -1,5 +1,5 @@
 import {deployments, ethers, getNamedAccounts} from "hardhat";
-import type {Contract, Signer} from "ethers";
+import type {Contract} from "ethers";
 import {Marketplace} from "../lib/marketplace";
 import amongus from "mongoose";
 import {IpfsQueue, TokensCollection} from "../lib/types/mongo";
@@ -17,7 +17,7 @@ describe("Ipfs", () => {
 
 
   before(async () => {
-    await deployments.fixture(["marketplace", "nft"]);
+    await deployments.fixture(["mocks", "marketplace", "nft"]); // reset contracts to not receive their logs
     ({owner} = await getNamedAccounts());
     const ownerS = await ethers.getSigner(owner);
 
