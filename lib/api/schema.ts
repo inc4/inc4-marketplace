@@ -16,7 +16,6 @@ import {Marketplace} from "../marketplace";
 
 export function schema(marketplace: Marketplace): GraphQLSchema {
 
-
   const TokenOwnersType = new GraphQLScalarType({
     name: "TokenOwners",
     serialize(val: any) {
@@ -89,23 +88,24 @@ export function schema(marketplace: Marketplace): GraphQLSchema {
     fields: () => ({
       tokensCollection: {
         type: new GraphQLList(TokensCollectionType),
-        resolve: () => {
+        resolve: async () => {
           return TokensCollection
             .find({tokenType: {$ne: null}})
             .sort({'tokens.last_update': 1});
         }
       },
+
       getTokensByOwner: {
         type: new GraphQLList(TokenType),
         args: {owner: {type: GraphQLString}},
-        resolve: (_, args) => {
+        resolve: async (_, args) => {
           return Tokens.find({[`owners.${args.owner}`]: {$gt: 0}});
         }
       },
 
       orders: {
         type: new GraphQLList(OrderType),
-        resolve: () => {
+        resolve: async () => {
           return Order.find({}).sort({createTime: 1})
         }
       },
@@ -116,7 +116,7 @@ export function schema(marketplace: Marketplace): GraphQLSchema {
           contractAddress: {type: GraphQLString},
           tokenId: {type: GraphQLString},
         },
-        resolve: (_, args) => {
+        resolve: async (_, args) => {
           const {contractAddress, tokenId} = args
           const filter = {contractAddress, tokens: {tokenId}}
           return Order
