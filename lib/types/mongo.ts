@@ -27,6 +27,8 @@ const TokenTransferEventSchema = new Schema({
 }, { _id: false });
 
 const TokenSchema = new Schema({
+  collectionObjectId: String,
+
   tokenId: String,
 
   metadata_uri: String,
@@ -37,13 +39,15 @@ const TokenSchema = new Schema({
   events: [TokenTransferEventSchema],
 }, { _id: false })
 
+export const Tokens = model("Tokens", TokenSchema);
+
 export const TokensCollection = model('TokensCollection', new Schema({
   contractAddress: String,
   tokenType: Number,
   name: String,
   owner: String,
 
-  tokens: [TokenSchema],
+  // tokens: [TokenSchema],
 }));
 
 

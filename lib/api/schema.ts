@@ -9,7 +9,7 @@ import {
   GraphQLString
 } from "graphql";
 
-import {Order, TokensCollection} from "../types/mongo";
+import {Order, TokensCollection, Tokens} from "../types/mongo";
 import {OrderFront} from "../types/common";
 import {Marketplace} from "../marketplace";
 
@@ -41,8 +41,11 @@ export function schema(marketplace: Marketplace): GraphQLSchema {
   const TokenType = new GraphQLObjectType({
     name: "Token",
     fields: () => ({
+      collectionObjectId: {type: GraphQLString},
       tokenId: {type: GraphQLString},
+      metadata_uri: {type: GraphQLString},
       metadata: {type: MetadataType},
+      last_update: {type: GraphQLInt},
       owners: {type: TokenOwnersType},
     })
   });
@@ -54,7 +57,7 @@ export function schema(marketplace: Marketplace): GraphQLSchema {
       contractAddress: {type: GraphQLString},
       tokenType: {type: GraphQLInt},
       owner: {type: GraphQLString},
-      tokens: {type: new GraphQLList(TokenType),}
+      // tokens: {type: new GraphQLList(TokenType),}
     })
   });
 
@@ -93,13 +96,10 @@ export function schema(marketplace: Marketplace): GraphQLSchema {
         }
       },
       getTokensByOwner: {
-        type: new GraphQLList(TokensCollectionType),
+        type: new GraphQLList(TokenType),
         args: {owner: {type: GraphQLString}},
         resolve: (_, args) => {
-          return TokensCollection.find({
-            tokenType: {$ne: null},
-            tokens: {$elemMatch: {[`owners.${args.owner}`]: {$gt: 0}}}
-          })
+          return Tokens.find({[`owners.${args.owner}`]: {$gt: 0}});
         }
       },
 
