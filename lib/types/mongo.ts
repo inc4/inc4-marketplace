@@ -37,7 +37,7 @@ const TokenSchema = new Schema({
   last_update: Number,
   owners: { type: Map, of: Number },
   events: [TokenTransferEventSchema],
-}, { _id: false })
+});
 
 export const Tokens = model("Tokens", TokenSchema);
 

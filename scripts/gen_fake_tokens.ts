@@ -1,32 +1,42 @@
-import {TokensCollection} from "../../lib/types/mongo";
+import {TokensCollection, Tokens} from "../lib/types/mongo";
 import {ethers} from "ethers";
-import {zero} from "./utils";
-import {TokenType} from "../../lib/types/common";
+import {zero} from "../test/utils/utils";
+import {TokenType} from "../lib/types/common";
+import amongus from "mongoose";
+
+amongus.connect('mongodb://root:example@localhost:27017/admin');
 
 
-randomCollection()
+generateFakeData();
 
 
-function randomCollection() {
-  const tokens = [];
-  for (let i=0; i<10; i++)
-    tokens.push(randomToken())
-
+function generateFakeData() {
+  let collectionObjId;
   new TokensCollection({
     contractAddress: randomAddress(),
     tokenType: randomChoice([TokenType.ERC1155, TokenType.ERC721]),
     owner: randomAddress(),
-    tokens: []
-  }).save().then((r:any) => console.log(r));
+  }).save().then((r:any) => {
+    collectionObjId = r._id
+    const tokens = [];
+    for (let i=0; i<5; i++)
+      tokens.push(randomToken(collectionObjId));
+    console.log(collectionObjId);
+
+    tokens.forEach(value => {
+      new Tokens(value).save().then((r:any) => {});
+    });
+  });
 }
 
 
-function randomToken() {
+function randomToken(collectionObjId: any) {
   const tokenId = randomFrom0To(1000).toString();
-  const quantity = randomFrom0To(100)
-  const addr = randomAddress()
+  const quantity = randomFrom0To(100);
+  const addr = randomAddress();
 
   return {
+    collectionObjectId: collectionObjId,
     tokenId: tokenId,
     metadata_uri: `http://localhost/${tokenId}`,
     metadata:
@@ -55,11 +65,15 @@ function randomToken() {
   }
 }
 
+function toHex(d: any) {
+  return  ("0"+(Number(d).toString(16))).slice(-2).toUpperCase()
+}
 function randomAddress() {
-  return "0x" + ethers.utils.keccak256(randomFrom0To(100000).toString()).toString().slice(0, 40)
+  let st = `0x${toHex(randomFrom0To(100000))}`;
+  return ethers.utils.keccak256(st).toString().slice(0, 40)
 }
 function randomHash() {
-  return "0x" + ethers.utils.keccak256(randomFrom0To(100000).toString()).toString().slice(0, 64)
+  return ethers.utils.keccak256(`0x${toHex(randomFrom0To(100000))}`).toString().slice(0, 64)
 }
 function randomChoice(items: any[]) {
   return items[randomFrom0To(items.length)];
