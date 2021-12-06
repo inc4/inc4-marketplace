@@ -129,6 +129,7 @@ export function schema(marketplace: Marketplace): GraphQLSchema {
           let afterIndex = 0;
           return Tokens
               .find({last_update: {$lte: args.afterCursor}, [`owners.${args.owner}`]: {$gt: 0}})
+              .sort( {last_update: -1 })
               .limit(args.first)
               .then((res) => {
                 if (typeof args.afterCursor === "number") {
