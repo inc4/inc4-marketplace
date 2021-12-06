@@ -9,9 +9,13 @@ import {
   GraphQLString
 } from "graphql";
 
+import {Page} from "./pagination"
+
 import {Order, TokensCollection, Tokens} from "../types/mongo";
 import {OrderFront} from "../types/common";
 import {Marketplace} from "../marketplace";
+// import {util} from "prettier";
+// import skip = util.skip;
 
 
 export function schema(marketplace: Marketplace): GraphQLSchema {
@@ -90,16 +94,73 @@ export function schema(marketplace: Marketplace): GraphQLSchema {
         type: new GraphQLList(TokensCollectionType),
         resolve: async () => {
           return TokensCollection
-            .find({tokenType: {$ne: null}})
-            .sort({'tokens.last_update': 1});
+              .find({tokenType: {$ne: null}})
+              .sort({'tokens.last_update': 1});
         }
       },
 
+      // getTokensByOwner: {
+      //   type: new GraphQLList(TokenType),
+      //   args: {
+      //     owner: {type: GraphQLString},
+      //     limit: {type: GraphQLInt},
+      //     after: {type: GraphQLInt}  // is a unix time
+      //   },
+      //   resolve: async (_, args) => {
+      //     // return Tokens.find({[`owners.${args.owner}`]: {$gt: 0}});
+      //
+      //     // return Tokens
+      //     //     .find({last_update: {$lte: args.after}, [`owners.${args.owner}`]: {$gt: 0}})
+      //     //     .sort({last_update: -1})
+      //     //     .limit(args.limit)
+      //
+      //
+      //   }
+      // },
+
       getTokensByOwner: {
-        type: new GraphQLList(TokenType),
-        args: {owner: {type: GraphQLString}},
+        type: Page(TokenType),
+        args: {
+          owner: {type: GraphQLString},
+          first: {type: GraphQLInt},
+          afterCursor: {type: GraphQLInt }  // is a unix time
+        },
         resolve: async (_, args) => {
-          return Tokens.find({[`owners.${args.owner}`]: {$gt: 0}});
+          let afterIndex = 0;
+          return Tokens
+              .find({last_update: {$lte: args.afterCursor}, [`owners.${args.owner}`]: {$gt: 0}})
+              .limit(args.first)
+              .then((res) => {
+                if (typeof args.afterCursor === "number") {
+                  let nodeId = args.afterCursor;
+                  let nodeIndex = res.findIndex(data => data.last_update === nodeId)
+                  if (nodeIndex >= 0) {
+                    afterIndex = nodeIndex + 1;
+                  }
+                }
+
+                const edges = res.map(node => ({
+                  node,
+                  cursor: node.last_update
+                }));
+
+                let startCursor, endCursor = null;
+                if (edges.length > 0) {
+                  startCursor = edges[0].node.last_update;
+                  endCursor = edges[edges.length - 1].node.last_update;
+                }
+                let hasNextPage = res.length > afterIndex + args.first;
+
+                return {
+                  totalCount: res.length,
+                  edges,
+                  pageInfo: {
+                    startCursor,
+                    endCursor,
+                    hasNextPage
+                  }
+                }
+              })
         }
       },
 
@@ -120,11 +181,11 @@ export function schema(marketplace: Marketplace): GraphQLSchema {
           const {contractAddress, tokenId} = args
           const filter = {contractAddress, tokens: {tokenId}}
           return Order
-            .find({$or: [
-              {left: {filter}},
-              {right: {filter}},
-            ]})
-            .sort({createTime: 1})
+              .find({$or: [
+                  {left: {filter}},
+                  {right: {filter}},
+                ]})
+              .sort({createTime: 1})
         }
       },
 
