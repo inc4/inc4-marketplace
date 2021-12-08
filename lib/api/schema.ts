@@ -139,7 +139,7 @@ export function schema(marketplace: Marketplace): GraphQLSchema {
               .find({})
               .sort({last_update: -1})
               .limit(args.first)
-              .paginate(args.cursor)  // If IDE lights this as error - all ok
+              .paginate(args.cursor)  // noinspection
         }
       },
 
@@ -157,7 +157,7 @@ export function schema(marketplace: Marketplace): GraphQLSchema {
             .find({[`owners.${args.owner}`]: {$gt: 0}})
             .sort({last_update: -1})
             .limit(args.first)
-            .paginate(args.cursor)  // If IDE lights this as error - all ok
+            .paginate(args.cursor)  // noinspection
         }
       },
 

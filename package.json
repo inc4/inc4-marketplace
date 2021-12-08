@@ -7,6 +7,7 @@
   "private": false,
   "scripts": {
     "api": "ts-node ./lib/main.ts",
+    "gen fake data": "ts-node ./scripts/gen_fake_tokens.ts",
     "build": "hardhat compile",
     "deploy": "hardhat deploy --network rinkeby",
     "verify": "hardhat etherscan-verify --network rinkeby",

@@ -7,10 +7,10 @@ import amongus from "mongoose";
 amongus.connect('mongodb://root:example@localhost:27017/admin');
 
 
-generateFakeData();
+generateFakeData(2);
 
 
-function generateFakeData() {
+function generateFakeData(tokensAmount: number) {
   let collectionObjId;
   new TokensCollection({
     contractAddress: randomAddress(),
@@ -19,12 +19,12 @@ function generateFakeData() {
   }).save().then((r:any) => {
     collectionObjId = r._id
     const tokens = [];
-    for (let i=0; i<5; i++)
+    for (let i=0; i<tokensAmount; i++)
       tokens.push(randomToken(collectionObjId));
     console.log(collectionObjId);
 
     tokens.forEach(value => {
-      new Tokens(value).save().then((r:any) => {});
+      new Tokens(value).save();
     });
   });
 }
@@ -65,19 +65,18 @@ function randomToken(collectionObjId: any) {
   }
 }
 
-function toHex(d: any) {
-  return  ("0"+(Number(d).toString(16))).slice(-2).toUpperCase()
-}
 function randomAddress() {
-  let st = `0x${toHex(randomFrom0To(100000))}`;
-  return ethers.utils.keccak256(st).toString().slice(0, 40)
+  return randomHash().slice(0, 42)
 }
+
 function randomHash() {
-  return ethers.utils.keccak256(`0x${toHex(randomFrom0To(100000))}`).toString().slice(0, 64)
+  return ethers.utils.hashMessage(randomFrom0To(100000).toString())
 }
+
 function randomChoice(items: any[]) {
   return items[randomFrom0To(items.length)];
 }
+
 function randomFrom0To(value: number) {
   return Math.floor(Math.random() * value)
 }
