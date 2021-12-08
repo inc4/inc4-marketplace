@@ -9,8 +9,6 @@ import {
   GraphQLString
 } from "graphql";
 
-import {Page} from "./pagination"
-
 import {Order, TokensCollection, Tokens} from "../types/mongo";
 import {OrderFront} from "../types/common";
 import {Marketplace} from "../marketplace";
@@ -54,13 +52,32 @@ export function schema(marketplace: Marketplace): GraphQLSchema {
   });
 
 
+  const PageInfoType = new GraphQLObjectType({
+    name: "PageInfo",
+    fields: () => ({
+      hasNext: {type: GraphQLBoolean},
+      nextCursor: {type: GraphQLString}
+    })
+  });
+
+
+  const Page = (itemType: any) => {
+    return new GraphQLObjectType({
+      name: "Page",
+      fields: () => ({
+        results: {type: new GraphQLList(itemType)},
+        pageInfo: {type: PageInfoType}
+      })
+    });
+  }
+
+
   const TokensCollectionType = new GraphQLObjectType({
     name: "TokensCollection",
     fields: () => ({
       contractAddress: {type: GraphQLString},
       tokenType: {type: GraphQLInt},
       owner: {type: GraphQLString},
-      // tokens: {type: new GraphQLList(TokenType),}
     })
   });
 
@@ -99,69 +116,21 @@ export function schema(marketplace: Marketplace): GraphQLSchema {
         }
       },
 
-      // getTokensByOwner: {
-      //   type: new GraphQLList(TokenType),
-      //   args: {
-      //     owner: {type: GraphQLString},
-      //     limit: {type: GraphQLInt},
-      //     after: {type: GraphQLInt}  // is a unix time
-      //   },
-      //   resolve: async (_, args) => {
-      //     // return Tokens.find({[`owners.${args.owner}`]: {$gt: 0}});
-      //
-      //     // return Tokens
-      //     //     .find({last_update: {$lte: args.after}, [`owners.${args.owner}`]: {$gt: 0}})
-      //     //     .sort({last_update: -1})
-      //     //     .limit(args.limit)
-      //
-      //
-      //   }
-      // },
-
       getTokensByOwner: {
         type: Page(TokenType),
         args: {
           owner: {type: GraphQLString},
           first: {type: GraphQLInt},
-          afterCursor: {type: GraphQLInt }  // is a unix time
+          cursor: {type: GraphQLString }
         },
         resolve: async (_, args) => {
-          let afterIndex = 0;
+          args.cursor = args.cursor === null ? undefined : args.cursor;
+
           return Tokens
-              .find({last_update: {$lte: args.afterCursor}, [`owners.${args.owner}`]: {$gt: 0}})
-              .sort( {last_update: -1 })
-              .limit(args.first)
-              .then((res) => {
-                if (typeof args.afterCursor === "number") {
-                  let nodeId = args.afterCursor;
-                  let nodeIndex = res.findIndex(data => data.last_update === nodeId)
-                  if (nodeIndex >= 0) {
-                    afterIndex = nodeIndex + 1;
-                  }
-                }
-
-                const edges = res.map(node => ({
-                  node,
-                  cursor: node.last_update
-                }));
-
-                let startCursor, endCursor = null;
-                if (edges.length > 0) {
-                  startCursor = edges[0].node.last_update;
-                  endCursor = edges[edges.length - 1].node.last_update;
-                }
-                let hasNextPage = res.length > afterIndex + args.first;
-
-                return {
-                  totalCount: res.length,
-                  edges,
-                  pageInfo: {
-                    startCursor,
-                    endCursor,
-                    hasNextPage
-                  }
-                }
-              })
+            .find({[`owners.${args.owner}`]: {$gt: 0}})
+            .sort({last_update: -1})
+            .limit(args.first)
+            .paginate(args.cursor)  // If IDE lights this as error - all ok
         }
       },
 

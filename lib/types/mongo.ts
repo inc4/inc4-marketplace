@@ -1,4 +1,5 @@
 import { model, Schema } from 'mongoose';
+const paginationPlugin = require('@mother/mongoose-cursor-pagination')
 
 // todo https://mongoosejs.com/docs/typescript.html
 
@@ -37,7 +38,7 @@ const TokenSchema = new Schema({
   last_update: Number,
   owners: { type: Map, of: Number },
   events: [TokenTransferEventSchema],
-});
+}).plugin(paginationPlugin);
 
 export const Tokens = model("Tokens", TokenSchema);
 
@@ -46,8 +47,6 @@ export const TokensCollection = model('TokensCollection', new Schema({
   tokenType: Number,
   name: String,
   owner: String,
-
-  // tokens: [TokenSchema],
 }));
 
 

@@ -36,6 +36,7 @@
   },
   "dependencies": {
     "@gnosis.pm/safe-deployments": "^1.1.0",
+    "@mother/mongoose-cursor-pagination": "^0.0.5",
     "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
     "@openzeppelin/contracts": "^4.1.0",
