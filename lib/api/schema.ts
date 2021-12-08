@@ -17,6 +17,25 @@ import {Marketplace} from "../marketplace";
 
 
 export function schema(marketplace: Marketplace): GraphQLSchema {
+  const PageInfoType = new GraphQLObjectType({
+    name: "PageInfo",
+    fields: () => ({
+      hasNext: {type: GraphQLBoolean},
+      nextCursor: {type: GraphQLString}
+    })
+  });
+
+
+  const Page = (itemType: any, pageName: any) => {
+    return new GraphQLObjectType({
+      name: pageName,
+      fields: () => ({
+        results: {type: new GraphQLList(itemType)},
+        pageInfo: {type: PageInfoType}
+      })
+    });
+  }
+
 
   const TokenOwnersType = new GraphQLScalarType({
     name: "TokenOwners",
@@ -38,6 +57,16 @@ export function schema(marketplace: Marketplace): GraphQLSchema {
     })
   });
 
+  const EventType = new GraphQLObjectType({
+    name: "Event",
+    fields: () => ({
+      from: {type: GraphQLString},
+      to: {type: GraphQLString},
+      quantity: {type: GraphQLInt},
+      timestamp: {type: GraphQLInt},
+      txHash: {type: GraphQLString},
+    })
+  });
 
   const TokenType = new GraphQLObjectType({
     name: "Token",
@@ -48,28 +77,9 @@ export function schema(marketplace: Marketplace): GraphQLSchema {
       metadata: {type: MetadataType},
       last_update: {type: GraphQLInt},
       owners: {type: TokenOwnersType},
+      events: {type: new GraphQLList(EventType)}
     })
   });
-
-
-  const PageInfoType = new GraphQLObjectType({
-    name: "PageInfo",
-    fields: () => ({
-      hasNext: {type: GraphQLBoolean},
-      nextCursor: {type: GraphQLString}
-    })
-  });
-
-
-  const Page = (itemType: any, pageName: any) => {
-    return new GraphQLObjectType({
-      name: pageName,
-      fields: () => ({
-        results: {type: new GraphQLList(itemType)},
-        pageInfo: {type: PageInfoType}
-      })
-    });
-  }
 
 
   const TokensCollectionType = new GraphQLObjectType({
