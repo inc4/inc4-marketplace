@@ -13,7 +13,7 @@ const interfaceId: { [key in TokenType]?: string } = {
   [TokenType.ERC721]: "0x80ac58cd",
 }
 
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+const ZERO_ADDRESS = ethers.constants.AddressZero;
 const IPFS_GATEWAYS = [
   "https://gateway.pinata.cloud/ipfs/",
   "https://cloudflare-ipfs.com/ipfs/",
