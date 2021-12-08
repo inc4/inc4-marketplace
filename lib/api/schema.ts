@@ -61,9 +61,9 @@ export function schema(marketplace: Marketplace): GraphQLSchema {
   });
 
 
-  const Page = (itemType: any) => {
+  const Page = (itemType: any, pageName: any) => {
     return new GraphQLObjectType({
-      name: "Page",
+      name: pageName,
       fields: () => ({
         results: {type: new GraphQLList(itemType)},
         pageInfo: {type: PageInfoType}
@@ -116,8 +116,25 @@ export function schema(marketplace: Marketplace): GraphQLSchema {
         }
       },
 
+      getTokens: {
+        type: Page(TokenType, "AllTokensPage"),
+        args: {
+          first: {type: GraphQLInt},
+          cursor: {type: GraphQLString }
+        },
+        resolve: async (_, args) => {
+          args.cursor = args.cursor === null ? undefined : args.cursor;
+
+          return Tokens
+              .find({})
+              .sort({last_update: -1})
+              .limit(args.first)
+              .paginate(args.cursor)  // If IDE lights this as error - all ok
+        }
+      },
+
       getTokensByOwner: {
-        type: Page(TokenType),
+        type: Page(TokenType, "TokensByOwnerPage"),
         args: {
           owner: {type: GraphQLString},
           first: {type: GraphQLInt},
