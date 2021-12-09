@@ -12,6 +12,9 @@ import {
 import {Order, TokensCollection, Tokens} from "../types/mongo";
 import {OrderFront} from "../types/common";
 import {Marketplace} from "../marketplace";
+
+const GraphQLUpload = require("graphql-upload")
+
 // import {util} from "prettier";
 // import skip = util.skip;
 
@@ -201,6 +204,19 @@ export function schema(marketplace: Marketplace): GraphQLSchema {
           const orderJson = JSON.parse(args.order);
           const order = OrderFront.fromJson(orderJson)
           await marketplace.createOrder(order);
+          return true;
+        }
+      },
+
+      uploadFile: {
+        type: GraphQLBoolean,
+        args: {file: {type: GraphQLUpload}},
+        resolve: async (_, args) => {
+          const { createReadStream, filename, mimetype, encoding } = await args.file;
+          const stream = createReadStream();
+
+          // Do magic
+
           return true;
         }
       }

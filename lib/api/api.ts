@@ -1,6 +1,8 @@
 import { Marketplace } from "../marketplace";
 import { schema } from "./schema";
-import { ApolloServer} from "apollo-server";
+// import { ApolloServer} from "apollo-server";
+const ApolloServer = require('apollo-server-express');
+const express = require("express")
 
 
 export async function start(marketplace: Marketplace) {
