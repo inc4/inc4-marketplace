@@ -13,13 +13,23 @@ import {Order, TokensCollection, Tokens} from "../types/mongo";
 import {OrderFront} from "../types/common";
 import {Marketplace} from "../marketplace";
 
-const GraphQLUpload = require("graphql-upload")
+const {GraphQLUpload} = require("graphql-upload");
 
 // import {util} from "prettier";
 // import skip = util.skip;
 
 
 export function schema(marketplace: Marketplace): GraphQLSchema {
+  // const FileType = new GraphQLObjectType({
+  //   name: "FileType",
+  //   fields: () => ({
+  //     filename: {type: GraphQLString},
+  //     mimetype: {type: GraphQLString},
+  //     encoding: {type: GraphQLString}
+  //   })
+  // });
+
+
   const PageInfoType = new GraphQLObjectType({
     name: "PageInfo",
     fields: () => ({
@@ -213,10 +223,8 @@ export function schema(marketplace: Marketplace): GraphQLSchema {
         args: {file: {type: GraphQLUpload}},
         resolve: async (_, args) => {
           const { createReadStream, filename, mimetype, encoding } = await args.file;
-          const stream = createReadStream();
-
-          // Do magic
-
+          let stream = createReadStream();
+          // stream.on("readable", () => {console.log(stream.read())});
           return true;
         }
       }

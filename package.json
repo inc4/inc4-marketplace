@@ -45,6 +45,7 @@
     "@types/dotenv": "^8.2.0",
     "@types/mongoose": "^5.11.97",
     "apollo-server": "^3.5.0",
+    "apollo-server-express": "^3.0.0-rc.1",
     "dotenv": "^9.0.2",
     "ethereum-waffle": "^3.2.0",
     "ethers": "^5.5.1",
