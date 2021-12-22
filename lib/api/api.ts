@@ -1,32 +1,15 @@
 import { Marketplace } from "../marketplace";
-import express from 'express'
-import bodyParser from 'body-parser'
-import { OrderFront } from "../types/common";
-import { graphqlHTTP } from "express-graphql";
 import { schema } from "./schema";
-
+// import { ApolloServer} from "apollo-server";
+import express from "express";
+import { ApolloServer } from 'apollo-server-express';
+const {graphqlUploadExpress} = require("graphql-upload");
 
 export async function start(marketplace: Marketplace) {
-
-  const app = express()
-  const jsonParser = bodyParser.json()
-
-  app.use(
-    "/graphql",
-    graphqlHTTP({
-      schema: schema(marketplace),
-      graphiql: true,
-    }));
-
-  app.post('/orders', jsonParser, async (req: any, res: any) => res.json(await marketplace.createOrder(OrderFront.fromJson(req.body))));
-  app.get('/orders', async (req: any, res: any) => res.json(await marketplace.getOrders()));
-  app.get('/orders/:orderId', async (req: any, res: any) => res.json(await marketplace.getOrder(req.params.orderId)));
-  app.get('/tokens', async (req: any, res: any) => res.json(await marketplace.getTokens()));
-  app.post('/asset/create', async (req: any, res: any) => res.set('Status Code', 202));
-
-
-  console.log("starting")
-  app.listen(8080);
-
+  const app = express();
+  app.use(graphqlUploadExpress());
+  const server = new ApolloServer({schema: schema(marketplace)});
+  await server.start();
+  server.applyMiddleware({ app });
+  await new Promise<void>(resolve => app.listen({ port: 8080 }, resolve));
 }
-

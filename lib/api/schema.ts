@@ -9,12 +9,45 @@ import {
   GraphQLString
 } from "graphql";
 
-import {Order, TokensCollection} from "../types/mongo";
+import {Order, TokensCollection, Tokens} from "../types/mongo";
 import {OrderFront} from "../types/common";
 import {Marketplace} from "../marketplace";
 
+const {GraphQLUpload} = require("graphql-upload");
+
+// import {util} from "prettier";
+// import skip = util.skip;
+
 
 export function schema(marketplace: Marketplace): GraphQLSchema {
+  // const FileType = new GraphQLObjectType({
+  //   name: "FileType",
+  //   fields: () => ({
+  //     filename: {type: GraphQLString},
+  //     mimetype: {type: GraphQLString},
+  //     encoding: {type: GraphQLString}
+  //   })
+  // });
+
+
+  const PageInfoType = new GraphQLObjectType({
+    name: "PageInfo",
+    fields: () => ({
+      hasNext: {type: GraphQLBoolean},
+      nextCursor: {type: GraphQLString}
+    })
+  });
+
+
+  const Page = (itemType: any, pageName: any) => {
+    return new GraphQLObjectType({
+      name: pageName,
+      fields: () => ({
+        results: {type: new GraphQLList(itemType)},
+        pageInfo: {type: PageInfoType}
+      })
+    });
+  }
 
 
   const TokenOwnersType = new GraphQLScalarType({
@@ -37,13 +70,27 @@ export function schema(marketplace: Marketplace): GraphQLSchema {
     })
   });
 
+  const EventType = new GraphQLObjectType({
+    name: "Event",
+    fields: () => ({
+      from: {type: GraphQLString},
+      to: {type: GraphQLString},
+      quantity: {type: GraphQLInt},
+      timestamp: {type: GraphQLInt},
+      txHash: {type: GraphQLString},
+    })
+  });
 
   const TokenType = new GraphQLObjectType({
     name: "Token",
     fields: () => ({
+      collectionObjectId: {type: GraphQLString},
       tokenId: {type: GraphQLString},
+      metadata_uri: {type: GraphQLString},
       metadata: {type: MetadataType},
+      last_update: {type: GraphQLInt},
       owners: {type: TokenOwnersType},
+      events: {type: new GraphQLList(EventType)}
     })
   });
 
@@ -54,7 +101,6 @@ export function schema(marketplace: Marketplace): GraphQLSchema {
       contractAddress: {type: GraphQLString},
       tokenType: {type: GraphQLInt},
       owner: {type: GraphQLString},
-      tokens: {type: new GraphQLList(TokenType),}
     })
   });
 
@@ -86,26 +132,78 @@ export function schema(marketplace: Marketplace): GraphQLSchema {
     fields: () => ({
       tokensCollection: {
         type: new GraphQLList(TokensCollectionType),
-        resolve: () => {
+        resolve: async () => {
           return TokensCollection
-            .find({tokenType: {$ne: null}})
-            .sort({'tokens.last_update': 1});
+              .find({tokenType: {$ne: null}})
+              .sort({'tokens.last_update': 1});
         }
       },
+
+      getTokens: {
+        type: Page(TokenType, "AllTokensPage"),
+        args: {
+          first: {type: GraphQLInt},
+          cursor: {type: GraphQLString }
+        },
+        resolve: async (_, args) => {
+          args.cursor = args.cursor === null ? undefined : args.cursor;
+
+          // @ts-ignore
+          return Tokens
+              .find({})
+              .sort({last_update: -1})
+              .limit(args.first)
+              .paginate(args.cursor)  // noinspection
+        }
+      },
+
       getTokensByOwner: {
-        type: new GraphQLList(TokensCollectionType),
-        args: {owner: {type: GraphQLString}},
-        resolve: (_, args) => {
-          return TokensCollection.find({
-            tokenType: {$ne: null},
-            tokens: {$elemMatch: {[`owners.${args.owner}`]: {$gt: 0}}}
-          })
+        type: Page(TokenType, "TokensByOwnerPage"),
+        args: {
+          owner: {type: GraphQLString},
+          first: {type: GraphQLInt},
+          cursor: {type: GraphQLString }
+        },
+        resolve: async (_, args) => {
+          args.cursor = args.cursor === null ? undefined : args.cursor;
+
+          // @ts-ignore
+          return Tokens
+            .find({[`owners.${args.owner}`]: {$gt: 0}})
+            .sort({last_update: -1})
+            .limit(args.first)
+            .paginate(args.cursor)  // noinspection
+        }
+      },
+
+      getSpecificToken: {
+        type: Page(TokenType, "SpecificTokens"),
+        args: {
+          tokenId: {type: GraphQLString},
+          metadataName: {type:  GraphQLString},
+          owner: {type: GraphQLString},
+          first: {type: GraphQLInt},
+          cursor: {type: GraphQLString }
+        },
+        resolve: async (_, args) => {
+          args.cursor = args.cursor === null ? undefined : args.cursor;
+
+          // @ts-ignore
+          return Tokens
+              .find({$or: [
+                  {[`owners.${args.owner}`]: {$gt: 0}},
+                  {"metadata.name": args.metadataName},
+                  {"tokenId": args.tokendId},
+                ]})
+              .sort({last_update: -1})
+              .limit(args.first)
+              .paginate(args.cursor)  // noinspection
         }
       },
 
       orders: {
         type: new GraphQLList(OrderType),
-        resolve: () => {
+        resolve: async () => {
           return Order.find({}).sort({createTime: 1})
         }
       },
@@ -116,15 +214,15 @@ export function schema(marketplace: Marketplace): GraphQLSchema {
           contractAddress: {type: GraphQLString},
           tokenId: {type: GraphQLString},
         },
-        resolve: (_, args) => {
+        resolve: async (_, args) => {
           const {contractAddress, tokenId} = args
           const filter = {contractAddress, tokens: {tokenId}}
           return Order
-            .find({$or: [
-              {left: {filter}},
-              {right: {filter}},
-            ]})
-            .sort({createTime: 1})
+              .find({$or: [
+                  {left: {filter}},
+                  {right: {filter}},
+                ]})
+              .sort({createTime: 1})
         }
       },
 
@@ -143,6 +241,17 @@ export function schema(marketplace: Marketplace): GraphQLSchema {
           const orderJson = JSON.parse(args.order);
           const order = OrderFront.fromJson(orderJson)
           await marketplace.createOrder(order);
+          return true;
+        }
+      },
+
+      uploadFile: {
+        type: GraphQLBoolean,
+        args: {file: {type: GraphQLUpload}},
+        resolve: async (_, args) => {
+          const { createReadStream, filename, mimetype, encoding } = await args.file;
+          let stream = createReadStream();
+          // stream.on("readable", () => {console.log(stream.read())});
           return true;
         }
       }

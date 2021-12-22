@@ -1,5 +1,6 @@
 import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
+import {constants} from "ethers";
 
 
 chai.should();
@@ -7,7 +8,7 @@ chai.use(chaiAsPromised);
 export const expect = chai.expect;
 
 
-export const zero = "0x0000000000000000000000000000000000000000"
+export const zero = constants.AddressZero;
 
 
 export const endtime = (d: number) => {
