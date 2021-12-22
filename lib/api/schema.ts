@@ -148,6 +148,7 @@ export function schema(marketplace: Marketplace): GraphQLSchema {
         resolve: async (_, args) => {
           args.cursor = args.cursor === null ? undefined : args.cursor;
 
+          // @ts-ignore
           return Tokens
               .find({})
               .sort({last_update: -1})
@@ -166,11 +167,37 @@ export function schema(marketplace: Marketplace): GraphQLSchema {
         resolve: async (_, args) => {
           args.cursor = args.cursor === null ? undefined : args.cursor;
 
+          // @ts-ignore
           return Tokens
             .find({[`owners.${args.owner}`]: {$gt: 0}})
             .sort({last_update: -1})
             .limit(args.first)
             .paginate(args.cursor)  // noinspection
+        }
+      },
+
+      getSpecificToken: {
+        type: Page(TokenType, "SpecificTokens"),
+        args: {
+          tokenId: {type: GraphQLString},
+          metadataName: {type:  GraphQLString},
+          owner: {type: GraphQLString},
+          first: {type: GraphQLInt},
+          cursor: {type: GraphQLString }
+        },
+        resolve: async (_, args) => {
+          args.cursor = args.cursor === null ? undefined : args.cursor;
+
+          // @ts-ignore
+          return Tokens
+              .find({$or: [
+                  {[`owners.${args.owner}`]: {$gt: 0}},
+                  {"metadata.name": args.metadataName},
+                  {"tokenId": args.tokendId},
+                ]})
+              .sort({last_update: -1})
+              .limit(args.first)
+              .paginate(args.cursor)  // noinspection
         }
       },
 
